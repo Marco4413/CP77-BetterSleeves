@@ -27,8 +27,8 @@ local BetterSleeves = {
     autoRoll = true,
     showUI = false,
     showDebugUI = false,
-    timer = 0.0,
-    updateInterval = 4.0,
+    delayTimer = 1.0,
+    delayCallback = nil,
     rolledDown = false,
     rollDownItemBlacklist = {},
     rollDownWeaponBlacklist = {
@@ -40,7 +40,6 @@ function BetterSleeves:SaveConfig()
     local file = io.open("data/config.json", "w")
     file:write(json.encode({
         autoRoll = self.autoRoll,
-        updateInterval = self.updateInterval,
     }))
     io.close(file)
 end
@@ -56,10 +55,6 @@ function BetterSleeves:LoadConfig()
 
         if (type(config.autoRoll) == "boolean") then
             self.autoRoll = config.autoRoll
-        end
-
-        if (type(config.updateInterval) == "number") then
-            self.updateInterval = config.updateInterval
         end
     end)
     if (not ok) then self:SaveConfig(); end
@@ -134,41 +129,53 @@ end
 
 ---@param force boolean
 function BetterSleeves:RollDownSleeves(force)
+    local player = Game.GetPlayer()
+    if not player then return; end
+    
     self.rolledDown = true
-    if force then
-        self:ChangeItemPOV("AttachmentSlots.Chest", false)
-        self:ChangeItemPOV("AttachmentSlots.Torso", false)
-        self:ChangeItemPOV("AttachmentSlots.Outfit", false)
+
+    local slots = {}
+    local activeClothing = Game.GetWardrobeSystem():GetActiveClothingSet()
+    if activeClothing then
+        local clothes = activeClothing.clothingList
+        for i=1, #clothes do
+            local item = TweakDB:GetRecord(clothes[i].visualItem.id)
+            if item then
+                local areaType = clothes[i].areaType
+                if areaType == gamedataEquipmentArea.Outfit then
+                    table.insert(slots, "AttachmentSlots.Outfit")
+                elseif areaType == gamedataEquipmentArea.OuterChest then
+                    table.insert(slots, "AttachmentSlots.Torso")
+                elseif areaType == gamedataEquipmentArea.InnerChest then
+                    table.insert(slots, "AttachmentSlots.Chest")
+                end
+            end
+        end
     else
-        local chest = self:ChangeItemPOV("AttachmentSlots.Chest", false, self.rollDownItemBlacklist, self.rollDownWeaponBlacklist)
-        if chest == POVChangeResult.WeaponBlacklisted then
-            self:RollUpSleeves()
-            return
-        elseif chest == POVChangeResult.ItemBlacklisted then
-            self:ChangeItemPOV("AttachmentSlots.Chest", true)
+        slots = { "AttachmentSlots.Chest", "AttachmentSlots.Torso", "AttachmentSlots.Outfit" }
+    end
+
+    if force then
+        for _, slot in next, slots do
+            self:ChangeItemPOV(slot, false)
         end
-
-        -- Checking for POVChangeResult.WeaponBlacklisted because POVChangeResult.NoItem returns early
-        local torso = self:ChangeItemPOV("AttachmentSlots.Torso", false, self.rollDownItemBlacklist, self.rollDownWeaponBlacklist)
-        if torso == POVChangeResult.WeaponBlacklisted then
-            self:RollUpSleeves()
-            return
-        elseif torso == POVChangeResult.ItemBlacklisted then
-            self:ChangeItemPOV("AttachmentSlots.Torso", true)
-        end
-
-
-        local outfit = self:ChangeItemPOV("AttachmentSlots.Outfit", false, self.rollDownItemBlacklist, self.rollDownWeaponBlacklist)
-        if outfit == POVChangeResult.WeaponBlacklisted then
-            self:RollUpSleeves()
-            return
-        elseif outfit == POVChangeResult.ItemBlacklisted then
-            self:ChangeItemPOV("AttachmentSlots.Outfit", true)
+    else
+        for _, slot in next, slots do
+            local res = self:ChangeItemPOV(slot, false, self.rollDownItemBlacklist, self.rollDownWeaponBlacklist)
+            if res == POVChangeResult.WeaponBlacklisted then
+                self:RollUpSleeves()
+                return
+            elseif res == POVChangeResult.ItemBlacklisted then
+                self:ChangeItemPOV(slot, true)
+            end
         end
     end
 end
 
 function BetterSleeves:RollUpSleeves()
+    local player = Game.GetPlayer()
+    if not player then return; end
+
     self.rolledDown = false
     self:ChangeItemPOV("AttachmentSlots.Chest", true)
     self:ChangeItemPOV("AttachmentSlots.Torso", true)
@@ -184,19 +191,36 @@ function BetterSleeves:ToggleSleeves(force)
     end
 end
 
-local function Event_OnUpdate(dt)
-    if BetterSleeves.autoRoll and Game.GetPlayer() then
-        BetterSleeves.timer = BetterSleeves.timer + dt
-        if (BetterSleeves.timer >= BetterSleeves.updateInterval) then
-            BetterSleeves.timer = 0.0
-
-            local photoMode = Game.GetPhotoModeSystem()
-            if not photoMode:IsPhotoModeActive() then
-                BetterSleeves:RollDownSleeves()
-            end 
-        end
-
+local function Event_RollDownSleeves()
+    if not BetterSleeves.autoRoll then return; end
+    BetterSleeves.delayTimer = 1
+    BetterSleeves.delayCallback = function ()
+        BetterSleeves:RollDownSleeves()
     end
+end
+
+local function Event_OnInit()
+    BetterSleeves:LoadConfig()
+
+    ObserveBefore("PlayerPuppet", "OnWeaponEquipEvent", Event_RollDownSleeves)
+    ObserveAfter("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
+    ObserveAfter("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
+    ObserveAfter("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_RollDownSleeves)
+    ObserveAfter("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
+end
+
+local function Event_OnUpdate(dt)
+    if BetterSleeves.delayTimer <= 0 or not BetterSleeves.delayCallback then return; end
+
+    BetterSleeves.delayTimer = BetterSleeves.delayTimer - dt
+    if BetterSleeves.delayTimer <= 0 then
+        BetterSleeves.delayCallback()
+        BetterSleeves.delayCallback = nil
+    end
+end
+
+local function Event_OnShutdown()
+    BetterSleeves:SaveConfig()
 end
 
 local function Event_OnDraw()
@@ -260,7 +284,10 @@ function BetterSleeves:Init()
     registerHotkey("force_rolldown_sleeves", "Force Roll Down Sleeves", function () self:RollDownSleeves(true) end)
     registerHotkey("force_rollup_sleeves"  , "Force Roll Up Sleeves"  , function () self:RollUpSleeves()       end)
     registerHotkey("force_toggle_sleeves"  , "Force Toggle Sleeves"   , function () self:ToggleSleeves(true)   end)
+
+    registerForEvent("onInit", Event_OnInit)
     registerForEvent("onUpdate", Event_OnUpdate)
+    registerForEvent("onShutdown", Event_OnShutdown)
     registerForEvent("onDraw", Event_OnDraw)
     registerForEvent("onOverlayOpen", Event_OnOverlayOpen)
     registerForEvent("onOverlayClose", Event_OnOverlayClose)
