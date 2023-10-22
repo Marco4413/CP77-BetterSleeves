@@ -35,6 +35,7 @@ local BetterSleeves = {
         ["mantis_blade"] = true,
         ["projectile_launcher"] = true,
     },
+    SlotToAreaType = {}, -- Populated within Event_OnInit
 }
 
 function BetterSleeves:SaveConfig()
@@ -143,17 +144,18 @@ function BetterSleeves:RollDownSleeves(force)
             local item = TweakDB:GetRecord(clothes[i].visualItem.id)
             if item then
                 local areaType = clothes[i].areaType
-                if areaType == gamedataEquipmentArea.Outfit then
-                    table.insert(slots, "AttachmentSlots.Outfit")
-                elseif areaType == gamedataEquipmentArea.OuterChest then
-                    table.insert(slots, "AttachmentSlots.Torso")
-                elseif areaType == gamedataEquipmentArea.InnerChest then
-                    table.insert(slots, "AttachmentSlots.Chest")
+                for slot, at in next, self.SlotToAreaType do
+                    if areaType == at then
+                        table.insert(slots, slot)
+                        break
+                    end
                 end
             end
         end
     else
-        slots = { "AttachmentSlots.Chest", "AttachmentSlots.Torso", "AttachmentSlots.Outfit" }
+        for slot in next, self.SlotToAreaType do
+            table.insert(slots, slot)
+        end
     end
 
     if force then
@@ -178,9 +180,9 @@ function BetterSleeves:RollUpSleeves()
     if not player then return; end
 
     self.rolledDown = false
-    self:ChangeItemPOV("AttachmentSlots.Chest", true)
-    self:ChangeItemPOV("AttachmentSlots.Torso", true)
-    self:ChangeItemPOV("AttachmentSlots.Outfit", true)
+    for slot in next, self.SlotToAreaType do
+        self:ChangeItemPOV(slot, true)
+    end
 end
 
 ---@param force boolean
@@ -202,6 +204,10 @@ end
 
 local function Event_OnInit()
     BetterSleeves:LoadConfig()
+
+    BetterSleeves.SlotToAreaType["AttachmentSlots.Outfit"] = gamedataEquipmentArea.Outfit
+    BetterSleeves.SlotToAreaType["AttachmentSlots.Torso"] = gamedataEquipmentArea.OuterChest
+    BetterSleeves.SlotToAreaType["AttachmentSlots.Chest"] = gamedataEquipmentArea.InnerChest
 
     ObserveBefore("PlayerPuppet", "OnWeaponEquipEvent", Event_RollDownSleeves)
     ObserveAfter("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
@@ -240,22 +246,12 @@ local function Event_OnDraw()
 
         BetterSleeves.showDebugUI = ImGui.Checkbox("Show Debug Info", BetterSleeves.showDebugUI)
         if BetterSleeves.showDebugUI then
-            local chest = BetterSleeves:GetItem("AttachmentSlots.Chest")
-            if chest then
-                local name = BetterSleeves:GetItemAppearanceName(chest)
-                ImGui.Text("Chest Item: " .. name:match("[^&]+"))
-            end
-
-            local torso = BetterSleeves:GetItem("AttachmentSlots.Torso")
-            if torso then
-                local name = BetterSleeves:GetItemAppearanceName(torso)
-                ImGui.Text("Torso Item: " .. name:match("[^&]+"))
-            end
-
-            local outfit = BetterSleeves:GetItem("AttachmentSlots.Outfit")
-            if outfit then
-                local name = BetterSleeves:GetItemAppearanceName(outfit)
-                ImGui.Text("Outfit Item: " .. name:match("[^&]+"))
+            for slot in next, BetterSleeves.SlotToAreaType do
+                local item = BetterSleeves:GetItem(slot)
+                if item then
+                    local name = BetterSleeves:GetItemAppearanceName(item)
+                    ImGui.Text(table.concat { slot:match("%.(.+)"), " Item: ", name:match("[^&]+") })
+                end
             end
 
             local player = Game.GetPlayer()
