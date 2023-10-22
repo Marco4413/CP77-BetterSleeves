@@ -36,12 +36,16 @@ local BetterSleeves = {
         ["projectile_launcher"] = true,
     },
     SlotToAreaType = {}, -- Populated within Event_OnInit
+    _newItem = "",
+    _newWeapon = "",
 }
 
 function BetterSleeves:SaveConfig()
     local file = io.open("data/config.json", "w")
     file:write(json.encode({
         autoRoll = self.autoRoll,
+        rollDownItemBlacklist = self.rollDownItemBlacklist,
+        rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
     }))
     io.close(file)
 end
@@ -57,6 +61,14 @@ function BetterSleeves:LoadConfig()
 
         if (type(config.autoRoll) == "boolean") then
             self.autoRoll = config.autoRoll
+        end
+
+        if (type(config.rollDownItemBlacklist) == "table") then
+            self.rollDownItemBlacklist = config.rollDownItemBlacklist
+        end
+
+        if (type(config.rollDownWeaponBlacklist) == "table") then
+            self.rollDownWeaponBlacklist = config.rollDownWeaponBlacklist
         end
     end)
     if (not ok) then self:SaveConfig(); end
@@ -241,16 +253,63 @@ local function Event_OnDraw()
             BetterSleeves:RollUpSleeves()
         end
 
-        BetterSleeves.updateInterval = ImGui.DragFloat("Update Interval (Auto-Roll)", BetterSleeves.updateInterval, 0.01, 1, 3600, "%.2f")
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
+
+        if ImGui.CollapsingHeader("Item Blacklist") then
+            ImGui.PushID("item-blacklist")
+            if ImGui.Button("+") then
+                BetterSleeves.rollDownItemBlacklist[BetterSleeves._newItem] = true
+                BetterSleeves._newItem = ""
+            end
+            ImGui.SameLine()
+            BetterSleeves._newItem = ImGui.InputText("", BetterSleeves._newItem, 256)
+
+            for item in next, BetterSleeves.rollDownItemBlacklist do
+                ImGui.PushID(table.concat{ "item-blacklist_", item })
+                if ImGui.Button("-") then
+                    BetterSleeves.rollDownItemBlacklist[item] = nil
+                end
+                ImGui.SameLine()
+                ImGui.Text(item)
+                ImGui.PopID()
+            end
+            ImGui.PopID()
+        end
+
+        if ImGui.CollapsingHeader("Weapon Blacklist") then
+            ImGui.PushID("weapon-blacklist")
+            if ImGui.Button("+") then
+                BetterSleeves.rollDownWeaponBlacklist[BetterSleeves._newWeapon] = true
+                BetterSleeves._newWeapon = ""
+            end
+            ImGui.SameLine()
+            BetterSleeves._newWeapon = ImGui.InputText("", BetterSleeves._newWeapon, 256)
+
+            for weapon in next, BetterSleeves.rollDownWeaponBlacklist do
+                ImGui.PushID(table.concat{ "weapon-blacklist_", weapon })
+                if ImGui.Button("-") then
+                    BetterSleeves.rollDownWeaponBlacklist[weapon] = nil
+                end
+                ImGui.SameLine()
+                ImGui.Text(weapon)
+                ImGui.PopID()
+            end
+            ImGui.PopID()
+        end
 
         BetterSleeves.showDebugUI = ImGui.Checkbox("Show Debug Info", BetterSleeves.showDebugUI)
         if BetterSleeves.showDebugUI then
             for slot in next, BetterSleeves.SlotToAreaType do
                 local item = BetterSleeves:GetItem(slot)
                 if item then
-                    local name = BetterSleeves:GetItemAppearanceName(item)
-                    ImGui.Text(table.concat { slot:match("%.(.+)"), " Item: ", name:match("[^&]+") })
+                    local itemName = BetterSleeves:GetItemAppearanceName(item):match("[^&]+")
+                    ImGui.PushID(table.concat{ "slot-debug_", slot })
+                    ImGui.Text(table.concat { slot:match("%.(.+)"), " Item: ", itemName })
+                    ImGui.SameLine()
+                    if ImGui.Button("Blacklist") then
+                        BetterSleeves.rollDownItemBlacklist[itemName] = true
+                    end
+                    ImGui.PopID()
                 end
             end
 
@@ -259,7 +318,13 @@ local function Event_OnDraw()
                 local weapon = player:GetActiveWeapon()
                 if weapon then
                     local weaponName = weapon:GetWeaponRecord():FriendlyName()
+                    ImGui.PushID("weapon-debug")
                     ImGui.Text("Weapon Name: " .. weaponName)
+                    ImGui.SameLine()
+                    if ImGui.Button("Blacklist") then
+                        BetterSleeves.rollDownWeaponBlacklist[weaponName] = true
+                    end
+                    ImGui.PopID()
                 end
             end
         end
