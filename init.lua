@@ -32,7 +32,8 @@ local BetterSleeves = {
     rolledDown = false,
     rollDownItemBlacklist = {},
     rollDownWeaponBlacklist = {
-        ["mantis_blade"] = true
+        ["mantis_blade"] = true,
+        ["projectile_launcher"] = true,
     },
 }
 
