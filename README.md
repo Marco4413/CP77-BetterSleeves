@@ -16,9 +16,7 @@ There are currently 2 mods which already do what this mod does:
 
 Other than automatically rolling down your Sleeves (I wish this was a thing IRL), this mod adds some keybinds to do that manually.
 
-You can add filters to `BetterSleeves.rollDownItemBlacklist` and `BetterSleeves.rollDownWeaponBlacklist` for weapons and items that you don't want to roll down sleeves for.
-I may consider adding GUI text boxes to do that in-game as well as saving and loading those filters. As of now, only the names of the outfits and weapons are shown in the GUI
-to be easily accessible.
+You can add filters through the mod's CET UI for weapons and items that you don't want to roll down sleeves for.
 
 ### Requirements
 
