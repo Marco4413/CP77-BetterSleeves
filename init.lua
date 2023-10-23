@@ -223,7 +223,7 @@ local function Event_OnInit()
 
     ObserveBefore("PlayerPuppet", "OnWeaponEquipEvent", Event_RollDownSleeves)
     ObserveAfter("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
-    ObserveAfter("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
+    -- ObserveAfter("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
     ObserveAfter("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_RollDownSleeves)
     ObserveAfter("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
 end
