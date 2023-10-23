@@ -227,6 +227,16 @@ local function Event_OnInit()
     BetterSleeves.SlotToAreaType["AttachmentSlots.Torso"] = gamedataEquipmentArea.OuterChest
     BetterSleeves.SlotToAreaType["AttachmentSlots.Chest"] = gamedataEquipmentArea.InnerChest
 
+    -- Equipment-EX Slots
+    BetterSleeves.SlotToAreaType["OutfitSlots.TorsoOuter"] = {}
+    BetterSleeves.SlotToAreaType["OutfitSlots.TorsoMiddle"] = {}
+    BetterSleeves.SlotToAreaType["OutfitSlots.TorsoInner"] = {}
+    BetterSleeves.SlotToAreaType["OutfitSlots.TorsoUnder"] = {}
+    BetterSleeves.SlotToAreaType["OutfitSlots.BodyOuter"] = {}
+    BetterSleeves.SlotToAreaType["OutfitSlots.BodyMiddle"] = {}
+    BetterSleeves.SlotToAreaType["OutfitSlots.BodyInner"] = {}
+    BetterSleeves.SlotToAreaType["OutfitSlots.BodyUnder"] = {}
+
     ObserveBefore("PlayerPuppet", "OnWeaponEquipEvent", Event_RollDownSleeves)
     ObserveAfter("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
     -- ObserveAfter("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
