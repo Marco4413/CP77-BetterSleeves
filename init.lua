@@ -30,6 +30,7 @@ local BetterSleeves = {
     delayTimer = 1.0,
     delayCallback = nil,
     rolledDown = false,
+    rollDownDelay = 1.0,
     rollDownItemBlacklist = {},
     rollDownWeaponBlacklist = {
         ["mantis_blade"] = true,
@@ -44,6 +45,7 @@ function BetterSleeves:SaveConfig()
     local file = io.open("data/config.json", "w")
     file:write(json.encode({
         autoRoll = self.autoRoll,
+        rollDownDelay = self.rollDownDelay,
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
     }))
@@ -61,6 +63,10 @@ function BetterSleeves:LoadConfig()
 
         if (type(config.autoRoll) == "boolean") then
             self.autoRoll = config.autoRoll
+        end
+
+        if (type(config.rollDownDelay) == "number") then
+            self.rollDownDelay = config.rollDownDelay
         end
 
         if (type(config.rollDownItemBlacklist) == "table") then
@@ -208,7 +214,7 @@ end
 
 local function Event_RollDownSleeves()
     if not BetterSleeves.autoRoll then return; end
-    BetterSleeves.delayTimer = 1
+    BetterSleeves.delayTimer = BetterSleeves.rollDownDelay
     BetterSleeves.delayCallback = function ()
         BetterSleeves:RollDownSleeves()
     end
@@ -254,6 +260,9 @@ local function Event_OnDraw()
         end
 
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
+        if BetterSleeves.autoRoll then
+            BetterSleeves.rollDownDelay = ImGui.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
+        end
 
         if ImGui.CollapsingHeader("Item Blacklist") then
             ImGui.PushID("item-blacklist")
