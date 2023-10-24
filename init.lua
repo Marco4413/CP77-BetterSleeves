@@ -44,6 +44,8 @@ function BetterSleeves:ResetConfig()
     self.rollDownItemBlacklist = {
         ["outfit_01__q305__hazmat_"] = true,
         ["outfit_01__q303__diving_suit_ow_helmet_"] = true,
+        ["outfit_02_sq030_diving_suit_"] = true,
+        ["outfit_02_q101_recovery_bandage_"] = true,
     }
     self.rollDownWeaponBlacklist = {
         ["mantis_blade"] = true,
