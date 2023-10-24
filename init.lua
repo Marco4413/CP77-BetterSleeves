@@ -327,6 +327,18 @@ local function Event_OnDraw()
             ImGui.PopID()
         end
 
+        if ImGui.Button("Reload Config") then
+            BetterSleeves:LoadConfig()
+        end
+
+        if ImGui.Button("Save Config") then
+            BetterSleeves:SaveConfig()
+        end
+
+        if ImGui.Button("Reset Config") then
+            BetterSleeves:ResetConfig()
+        end
+
         BetterSleeves.showDebugUI = ImGui.Checkbox("Show Debug Info", BetterSleeves.showDebugUI)
         if BetterSleeves.showDebugUI then
             for slot in next, BetterSleeves.SlotToAreaType do
