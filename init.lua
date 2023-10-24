@@ -31,18 +31,25 @@ local BetterSleeves = {
     delayCallback = nil,
     rolledDown = false,
     rollDownDelay = 1.0,
-    rollDownItemBlacklist = {
-        ["outfit_01__q305__hazmat_"] = true,
-        ["outfit_01__q303__diving_suit_ow_helmet_"] = true,
-    },
-    rollDownWeaponBlacklist = {
-        ["mantis_blade"] = true,
-        ["projectile_launcher"] = true,
-    },
+    rollDownItemBlacklist = {},
+    rollDownWeaponBlacklist = {},
     SlotToAreaType = {}, -- Populated within Event_OnInit
     _newItem = "",
     _newWeapon = "",
 }
+
+function BetterSleeves:ResetConfig()
+    self.autoRoll = true
+    self.rollDownDelay = 1.0
+    self.rollDownItemBlacklist = {
+        ["outfit_01__q305__hazmat_"] = true,
+        ["outfit_01__q303__diving_suit_ow_helmet_"] = true,
+    }
+    self.rollDownWeaponBlacklist = {
+        ["mantis_blade"] = true,
+        ["projectile_launcher"] = true,
+    }
+end
 
 function BetterSleeves:SaveConfig()
     local file = io.open("data/config.json", "w")
@@ -224,6 +231,7 @@ local function Event_RollDownSleeves()
 end
 
 local function Event_OnInit()
+    BetterSleeves:ResetConfig() -- Loads default settings
     BetterSleeves:LoadConfig()
 
     BetterSleeves.SlotToAreaType["AttachmentSlots.Outfit"] = gamedataEquipmentArea.Outfit
