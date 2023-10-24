@@ -31,7 +31,10 @@ local BetterSleeves = {
     delayCallback = nil,
     rolledDown = false,
     rollDownDelay = 1.0,
-    rollDownItemBlacklist = {},
+    rollDownItemBlacklist = {
+        ["outfit_01__q305__hazmat_"] = true,
+        ["outfit_01__q303__diving_suit_ow_helmet_"] = true,
+    },
     rollDownWeaponBlacklist = {
         ["mantis_blade"] = true,
         ["projectile_launcher"] = true,
