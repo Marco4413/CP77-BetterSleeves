@@ -22,9 +22,15 @@ You can add filters through the mod's CET UI for weapons and items that you don'
 
 - [CET 1.27+](https://github.com/yamashi/CyberEngineTweaks)
 
+### Mod Compatibility
+
+If you're making a mod that adds a piece of clothe which has sleeves, remember to set `renderingPlaneAnimationParam` to `renderPlane`
+inside your `entSkinnedMeshComponent`s within your `.ent` file. Otherwise, hands will be drawn on top of it when holding weapons/performing
+certain animations.
+
 ### Known Issues
 
-1. The NUS Infiltrator Outfit has issues when weapons are equipped (hands are drawn on top). Either disable it or roll up sleeves when in combat.
+**None!**
 
 ## Development
 
