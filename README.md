@@ -26,7 +26,7 @@ You can add filters through the mod's CET UI for weapons and items that you don'
 
 There are currently 3 separate files:
 1. **BetterSleeves**: The main mod which includes the **logic for rolling down sleeves and fixes to some clothing items**.
-2. **BetterSleeves - No REDmod**: This version has no fixes to clothing but contains the **logic to roll down sleeves**.
+2. **BetterSleeves - CET Only**: This version has no fixes to clothing but contains the **logic to roll down sleeves**.
 3. **BetterSleeves - Archive Fixes**: This is marked as "Optional" and contains **only the fixes to clothing items**. It can be used with other Sleeves mods!
 
 ### Mod Compatibility
