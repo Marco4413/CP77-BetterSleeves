@@ -33,9 +33,11 @@ local BetterSleeves = {
     rollDownDelay = 1.0,
     rollDownItemBlacklist = {},
     rollDownWeaponBlacklist = {},
+    rollDownMissionBlacklist = {},
     SlotToAreaType = {}, -- Populated within Event_OnInit
     _newItem = "",
     _newWeapon = "",
+    _newMission = "",
 }
 
 function BetterSleeves:ResetConfig()
@@ -141,16 +143,36 @@ local POVChangeResult = {
     SamePOV = 2,
     ItemBlacklisted = 3,
     WeaponBlacklisted = 4,
+    MissionBlacklisted = 5,
 }
 
 BetterSleeves.POVChangeResult = POVChangeResult
+
+function BetterSleeves:GetTrackedMissionAndObjectiveIds()
+    local journal = Game.GetJournalManager()
+
+    -- gameJournalQuestObjective[ id:02_meet_hanako ]
+    local obj = journal:GetTrackedEntry()
+    if not obj then return; end
+
+    -- gameJournalQuestPhase[ id:q115 ]
+    local phase = journal:GetParentEntry(obj)
+    if not phase then return; end
+
+    -- gameJournalQuest[ id:02_sickness ]
+    local quest = journal:GetParentEntry(phase)
+    if not quest then return; end
+
+    return quest.id, obj.id
+end
 
 ---@param slot string
 ---@param fpp boolean
 ---@param itemBlacklist table
 ---@param weaponBlacklist table
+---@param missionBlacklist table
 ---@return POVChangeResult
-function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist)
+function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, missionBlacklist)
     local item = self:GetItem(slot)
     if not item then return POVChangeResult.NoItem; end
 
@@ -166,6 +188,19 @@ function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist)
         if weapon then
             local weaponName = weapon:GetWeaponRecord():FriendlyName()
             if weaponBlacklist[weaponName] then return POVChangeResult.WeaponBlacklisted; end
+        end
+    end
+
+    if missionBlacklist then
+        local quest, obj = self:GetTrackedMissionAndObjectiveIds()
+        print(quest)
+        print(table.concat{quest, ".*"})
+        print(json.encode(missionBlacklist))
+        if quest and (
+            missionBlacklist[table.concat{quest, ".*"}] or
+            missionBlacklist[table.concat{quest, ".", obj}]
+        ) then
+            return POVChangeResult.MissionBlacklisted
         end
     end
 
@@ -216,8 +251,9 @@ function BetterSleeves:RollDownSleeves(force)
         end
     else
         for _, slot in next, slots do
-            local res = self:ChangeItemPOV(slot, false, self.rollDownItemBlacklist, self.rollDownWeaponBlacklist)
-            if res == POVChangeResult.WeaponBlacklisted then
+            local res = self:ChangeItemPOV(slot, false, self.rollDownItemBlacklist, self.rollDownWeaponBlacklist, self.rollDownMissionBlacklist)
+            if (res == POVChangeResult.WeaponBlacklisted or
+                res == POVChangeResult.MissionBlacklisted) then
                 self:RollUpSleeves()
                 return
             elseif res == POVChangeResult.ItemBlacklisted then
@@ -277,6 +313,8 @@ local function Event_OnInit()
     -- ObserveAfter("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
     ObserveAfter("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_RollDownSleeves)
     ObserveAfter("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
+    ObserveAfter("JournalManager", "OnQuestEntryTracked", Event_RollDownSleeves)
+    ObserveAfter("JournalManager", "OnQuestEntryUntracked", Event_RollDownSleeves)
 end
 
 local function Event_OnUpdate(dt)
@@ -351,6 +389,27 @@ local function Event_OnDraw()
             ImGui.PopID()
         end
 
+        if ImGui.CollapsingHeader("Mission Blacklist") then
+            ImGui.PushID("mission-blacklist")
+            if ImGui.Button("+") then
+                BetterSleeves.rollDownMissionBlacklist[BetterSleeves._newMission] = true
+                BetterSleeves._newMission = ""
+            end
+            ImGui.SameLine()
+            BetterSleeves._newMission = ImGui.InputText("", BetterSleeves._newMission, 512)
+
+            for mission in next, BetterSleeves.rollDownMissionBlacklist do
+                ImGui.PushID(table.concat{ "mission-blacklist_", mission })
+                if ImGui.Button("-") then
+                    BetterSleeves.rollDownMissionBlacklist[mission] = nil
+                end
+                ImGui.SameLine()
+                ImGui.Text(mission)
+                ImGui.PopID()
+            end
+            ImGui.PopID()
+        end
+
         if ImGui.Button("Reload Config") then
             BetterSleeves:LoadConfig()
         end
@@ -392,6 +451,25 @@ local function Event_OnDraw()
                     end
                     ImGui.PopID()
                 end
+            end
+
+            local quest, obj = BetterSleeves:GetTrackedMissionAndObjectiveIds()
+            if quest then
+                ImGui.PushID("quest-debug")
+                ImGui.Text("Quest ID: " .. quest)
+                ImGui.SameLine()
+                if ImGui.Button("Blacklist") then
+                    BetterSleeves.rollDownMissionBlacklist[table.concat{quest, ".*"}] = true
+                end
+                ImGui.PopID()
+
+                ImGui.PushID("objective-debug")
+                ImGui.Text("Objective ID: " .. obj)
+                ImGui.SameLine()
+                if ImGui.Button("Blacklist") then
+                    BetterSleeves.rollDownMissionBlacklist[table.concat{quest, ".", obj}] = true
+                end
+                ImGui.PopID()
             end
         end
     end
