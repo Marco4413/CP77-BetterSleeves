@@ -58,12 +58,30 @@ end
 function BetterSleeves:SaveConfig()
     local file = io.open("data/config.json", "w")
     file:write(json.encode({
+        version = 1,
         autoRoll = self.autoRoll,
         rollDownDelay = self.rollDownDelay,
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
     }))
     io.close(file)
+end
+
+function BetterSleeves:MigrateConfigFromVersion(version)
+    if not version then
+        -- Migrate from version 0 to 1
+        version = 1
+        self.rollDownItemBlacklist["outfit_01__q305__hazmat_"] = true
+        self.rollDownItemBlacklist["outfit_01__q303__diving_suit_"] = true
+        self.rollDownItemBlacklist["outfit_01__q303__diving_suit_ow_helmet_"] = true
+        self.rollDownItemBlacklist["outfit_02_sq029_police_suit_"] = true
+        self.rollDownItemBlacklist["outfit_02_sq030_diving_suit_"] = true
+        self.rollDownItemBlacklist["outfit_02_q101_recovery_bandage_"] = true
+        self.rollDownWeaponBlacklist["mantis_blade"] = true
+        self.rollDownWeaponBlacklist["projectile_launcher"] = true
+    end
+
+    -- Migrate from version x to latest
 end
 
 function BetterSleeves:LoadConfig()
@@ -90,6 +108,8 @@ function BetterSleeves:LoadConfig()
         if (type(config.rollDownWeaponBlacklist) == "table") then
             self.rollDownWeaponBlacklist = config.rollDownWeaponBlacklist
         end
+
+        self:MigrateConfigFromVersion(config.version)
     end)
     if (not ok) then self:SaveConfig(); end
 end
