@@ -165,60 +165,6 @@ function BetterSleeves:GetTrackedMissionAndObjectiveIds()
     return quest.id, obj.id
 end
 
----@param str string
----@param sep string
----@param n number|nil
----@return table
-function BetterSleeves.StringSplit(str, sep, n)
-    if n == 0 then return {str}; end
-    local split = {}
-    local index = 1
-    while true do
-        local st, en = str:find(sep, index, true)
-        if not st then
-            table.insert(split, str:sub(index))
-            break
-        end
-
-        table.insert(split, str:sub(index, st-1))
-        index = en + 1
-
-        if n then
-            n = n - 1
-            if n <= 0 then
-                table.insert(split, str:sub(index))
-                break
-            end
-        end
-    end
-    return split
-end
-
----@param itemName string
----@param oldCamera string
----@param newCamera string
----@return string
----@return boolean
-function BetterSleeves.ReplaceCameraSuffix(itemName, oldCamera, newCamera)
-    local nameAndSuffixes = BetterSleeves.StringSplit(itemName, "&", 3)
-    local cameraIndex = 2
-    if nameAndSuffixes[2] and (
-        nameAndSuffixes[2] == "Male" or
-        nameAndSuffixes[2] == "Female") then
-        cameraIndex = 3
-    end
-
-    if nameAndSuffixes[cameraIndex] == newCamera then
-        return itemName, false
-    elseif nameAndSuffixes[cameraIndex] == oldCamera then
-        nameAndSuffixes[cameraIndex] = newCamera
-        return table.concat(nameAndSuffixes, "&"), true
-    end
-
-    table.insert(nameAndSuffixes, cameraIndex, newCamera)
-    return table.concat(nameAndSuffixes, "&"), true
-end
-
 ---@param slot string
 ---@param fpp boolean
 ---@param itemBlacklist table
@@ -256,9 +202,9 @@ function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, 
 
     local newItemName, changed;
     if fpp then
-        newItemName, changed = self.ReplaceCameraSuffix(itemName, "TPP", "FPP")
+        newItemName, changed = itemName:gsub("&TPP", "&FPP")
     else
-        newItemName, changed = self.ReplaceCameraSuffix(itemName, "FPP", "TPP")
+        newItemName, changed = itemName:gsub("&FPP", "&TPP")
     end
     if not changed then return POVChangeResult.SamePOV; end
 
