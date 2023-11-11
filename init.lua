@@ -165,18 +165,57 @@ function BetterSleeves:GetTrackedMissionAndObjectiveIds()
 end
 
 ---@param str string
----@param pattern string
----@param repl string
----@return string
----@return number
-function BetterSleeves.StringReplaceOrAppendIfNone(str, pattern, repl)
-    local newStr, n = str:gsub(pattern, repl)
-    if n > 0 then
-        return newStr, n
-    elseif str:find(repl, 1, true) then
-        return str, 0
+---@param sep string
+---@param n number|nil
+---@return table
+function BetterSleeves.StringSplit(str, sep, n)
+    if n == 0 then return {str}; end
+    local split = {}
+    local index = 1
+    while true do
+        local st, en = str:find(sep, index, true)
+        if not st then
+            table.insert(split, str:sub(index))
+            break
+        end
+
+        table.insert(split, str:sub(index, st-1))
+        index = en + 1
+
+        if n then
+            n = n - 1
+            if n <= 0 then
+                table.insert(split, str:sub(index))
+                break
+            end
+        end
     end
-    return table.concat({newStr,repl}), 1
+    return split
+end
+
+---@param itemName string
+---@param oldCamera string
+---@param newCamera string
+---@return string
+---@return boolean
+function BetterSleeves.ReplaceCameraSuffix(itemName, oldCamera, newCamera)
+    local nameAndSuffixes = BetterSleeves.StringSplit(itemName, "&", 3)
+    local cameraIndex = 2
+    if nameAndSuffixes[2] and (
+        nameAndSuffixes[2] == "Male" or
+        nameAndSuffixes[2] == "Female") then
+        cameraIndex = 3
+    end
+
+    if nameAndSuffixes[cameraIndex] == newCamera then
+        return itemName, false
+    elseif nameAndSuffixes[cameraIndex] == oldCamera then
+        nameAndSuffixes[cameraIndex] = newCamera
+        return table.concat(nameAndSuffixes, "&"), true
+    end
+
+    table.insert(nameAndSuffixes, cameraIndex, newCamera)
+    return table.concat(nameAndSuffixes, "&"), true
 end
 
 ---@param slot string
@@ -214,13 +253,13 @@ function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, 
         end
     end
 
-    local newItemName, n;
+    local newItemName, changed;
     if fpp then
-        newItemName, n = self.StringReplaceOrAppendIfNone(itemName, "&TPP", "&FPP")
+        newItemName, changed = self.ReplaceCameraSuffix(itemName, "TPP", "FPP")
     else
-        newItemName, n = self.StringReplaceOrAppendIfNone(itemName, "&FPP", "&TPP")
+        newItemName, changed = self.ReplaceCameraSuffix(itemName, "FPP", "TPP")
     end
-    if n == 0 then return POVChangeResult.SamePOV; end
+    if not changed then return POVChangeResult.SamePOV; end
 
     tSys:ChangeItemAppearanceByName(player, item:GetItemID(), newItemName)
     return POVChangeResult.Changed
