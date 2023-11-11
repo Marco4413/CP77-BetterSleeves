@@ -163,6 +163,21 @@ function BetterSleeves:GetTrackedMissionAndObjectiveIds()
     return quest.id, obj.id
 end
 
+---@param str string
+---@param pattern string
+---@param repl string
+---@return string
+---@return number
+function BetterSleeves.StringReplaceOrAppendIfNone(str, pattern, repl)
+    local newStr, n = str:gsub(pattern, repl)
+    if n > 0 then
+        return newStr, n
+    elseif str:find(repl, 1, true) then
+        return str, 0
+    end
+    return table.concat({newStr,repl}), 1
+end
+
 ---@param slot string
 ---@param fpp boolean
 ---@param itemBlacklist table
@@ -200,9 +215,9 @@ function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, 
 
     local newItemName, n;
     if fpp then
-        newItemName, n = itemName:gsub("&TPP", "&FPP")
+        newItemName, n = self.StringReplaceOrAppendIfNone(itemName, "&TPP", "&FPP")
     else
-        newItemName, n = itemName:gsub("&FPP", "&TPP")
+        newItemName, n = self.StringReplaceOrAppendIfNone(itemName, "&FPP", "&TPP")
     end
     if n == 0 then return POVChangeResult.SamePOV; end
 
