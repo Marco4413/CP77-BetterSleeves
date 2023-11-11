@@ -39,6 +39,7 @@ local BetterSleeves = {
     _newMission = "",
     -- Populated within Event_OnInit
     slotToAreaType = {},
+    appearanceSuffixCameraRecord = nil,
 }
 
 function BetterSleeves:ResetConfig()
@@ -139,10 +140,11 @@ end
 local POVChangeResult = {
     Changed = 0,
     NoItem = 1,
-    SamePOV = 2,
-    ItemBlacklisted = 3,
-    WeaponBlacklisted = 4,
-    MissionBlacklisted = 5,
+    NoCameraSuffix = 2,
+    SamePOV = 3,
+    ItemBlacklisted = 4,
+    WeaponBlacklisted = 5,
+    MissionBlacklisted = 6,
 }
 
 BetterSleeves.POVChangeResult = POVChangeResult
@@ -174,6 +176,11 @@ end
 function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, missionBlacklist)
     local item = self:GetItem(slot)
     if not item then return POVChangeResult.NoItem; end
+
+    local itemRecord = TweakDB:GetRecord(item:GetItemID().id)
+    if not itemRecord:AppearanceSuffixesContains(self.appearanceSuffixCameraRecord) then
+        return POVChangeResult.NoCameraSuffix
+    end
 
     local itemName = self:GetItemAppearanceName(item)
     -- itemBlacklist contains names without attributes
@@ -302,6 +309,7 @@ local function Event_OnInit()
     BetterSleeves:ResetConfig() -- Loads default settings
     BetterSleeves:LoadConfig()
 
+    BetterSleeves.appearanceSuffixCameraRecord = TweakDB:GetRecord("itemsFactoryAppearanceSuffix.Camera")
 
     BetterSleeves.slotToAreaType["AttachmentSlots.Outfit"] = gamedataEquipmentArea.Outfit
     BetterSleeves.slotToAreaType["AttachmentSlots.Torso"] = gamedataEquipmentArea.OuterChest
