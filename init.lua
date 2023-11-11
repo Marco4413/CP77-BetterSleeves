@@ -75,9 +75,10 @@ function BetterSleeves:MigrateConfigFromVersion(version)
         self.rollDownWeaponBlacklist["projectile_launcher"] = true
     end
 
-    if version == 1 then
+    if version <= 1 then
         version = 2
         self.rollDownItemBlacklist["empty_appearance_default"] = true
+        self.rollDownItemBlacklist["t2_jacket_21_edgerunners_01_"] = true
     end
 
     -- Migrate from version x to latest
