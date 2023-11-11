@@ -43,18 +43,10 @@ local BetterSleeves = {
 function BetterSleeves:ResetConfig()
     self.autoRoll = true
     self.rollDownDelay = 1.0
-    self.rollDownItemBlacklist = {
-        ["outfit_01__q305__hazmat_"] = true,
-        ["outfit_01__q303__diving_suit_"] = true,
-        ["outfit_01__q303__diving_suit_ow_helmet_"] = true,
-        ["outfit_02_sq029_police_suit_"] = true,
-        ["outfit_02_sq030_diving_suit_"] = true,
-        ["outfit_02_q101_recovery_bandage_"] = true,
-    }
-    self.rollDownWeaponBlacklist = {
-        ["mantis_blade"] = true,
-        ["projectile_launcher"] = true,
-    }
+    self.rollDownItemBlacklist = {}
+    self.rollDownWeaponBlacklist = {}
+    -- Add all blacklist entries
+    self:MigrateConfigFromVersion(nil)
 end
 
 function BetterSleeves:SaveConfig()
