@@ -332,6 +332,7 @@ local function Event_OnInit()
     ObserveAfter("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
     ObserveAfter("JournalManager", "OnQuestEntryTracked", Event_RollDownSleeves)
     ObserveAfter("JournalManager", "OnQuestEntryUntracked", Event_RollDownSleeves)
+    ObserveAfter("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_RollDownSleeves)
 end
 
 local function Event_OnUpdate(dt)
