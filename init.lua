@@ -34,10 +34,11 @@ local BetterSleeves = {
     rollDownItemBlacklist = {},
     rollDownWeaponBlacklist = {},
     rollDownMissionBlacklist = {},
-    SlotToAreaType = {}, -- Populated within Event_OnInit
     _newItem = "",
     _newWeapon = "",
     _newMission = "",
+    -- Populated within Event_OnInit
+    slotToAreaType = {},
 }
 
 function BetterSleeves:ResetConfig()
@@ -280,7 +281,7 @@ function BetterSleeves:RollDownSleeves(force)
             local item = TweakDB:GetRecord(clothes[i].visualItem.id)
             if item then
                 local areaType = clothes[i].areaType
-                for slot, at in next, self.SlotToAreaType do
+                for slot, at in next, self.slotToAreaType do
                     if areaType == at then
                         table.insert(slots, slot)
                         break
@@ -289,7 +290,7 @@ function BetterSleeves:RollDownSleeves(force)
             end
         end
     else
-        for slot in next, self.SlotToAreaType do
+        for slot in next, self.slotToAreaType do
             table.insert(slots, slot)
         end
     end
@@ -329,7 +330,7 @@ function BetterSleeves:RollUpSleeves()
     if not player then return; end
 
     self.rolledDown = false
-    for slot in next, self.SlotToAreaType do
+    for slot in next, self.slotToAreaType do
         self:RollUpSleevesForSlot(slot)
     end
 end
@@ -355,19 +356,20 @@ local function Event_OnInit()
     BetterSleeves:ResetConfig() -- Loads default settings
     BetterSleeves:LoadConfig()
 
-    BetterSleeves.SlotToAreaType["AttachmentSlots.Outfit"] = gamedataEquipmentArea.Outfit
-    BetterSleeves.SlotToAreaType["AttachmentSlots.Torso"] = gamedataEquipmentArea.OuterChest
-    BetterSleeves.SlotToAreaType["AttachmentSlots.Chest"] = gamedataEquipmentArea.InnerChest
+
+    BetterSleeves.slotToAreaType["AttachmentSlots.Outfit"] = gamedataEquipmentArea.Outfit
+    BetterSleeves.slotToAreaType["AttachmentSlots.Torso"] = gamedataEquipmentArea.OuterChest
+    BetterSleeves.slotToAreaType["AttachmentSlots.Chest"] = gamedataEquipmentArea.InnerChest
 
     -- Equipment-EX Slots
-    BetterSleeves.SlotToAreaType["OutfitSlots.TorsoOuter"] = {}
-    BetterSleeves.SlotToAreaType["OutfitSlots.TorsoMiddle"] = {}
-    BetterSleeves.SlotToAreaType["OutfitSlots.TorsoInner"] = {}
-    BetterSleeves.SlotToAreaType["OutfitSlots.TorsoUnder"] = {}
-    BetterSleeves.SlotToAreaType["OutfitSlots.BodyOuter"] = {}
-    BetterSleeves.SlotToAreaType["OutfitSlots.BodyMiddle"] = {}
-    BetterSleeves.SlotToAreaType["OutfitSlots.BodyInner"] = {}
-    BetterSleeves.SlotToAreaType["OutfitSlots.BodyUnder"] = {}
+    BetterSleeves.slotToAreaType["OutfitSlots.TorsoOuter"] = {}
+    BetterSleeves.slotToAreaType["OutfitSlots.TorsoMiddle"] = {}
+    BetterSleeves.slotToAreaType["OutfitSlots.TorsoInner"] = {}
+    BetterSleeves.slotToAreaType["OutfitSlots.TorsoUnder"] = {}
+    BetterSleeves.slotToAreaType["OutfitSlots.BodyOuter"] = {}
+    BetterSleeves.slotToAreaType["OutfitSlots.BodyMiddle"] = {}
+    BetterSleeves.slotToAreaType["OutfitSlots.BodyInner"] = {}
+    BetterSleeves.slotToAreaType["OutfitSlots.BodyUnder"] = {}
 
     ObserveBefore("PlayerPuppet", "OnWeaponEquipEvent", Event_RollDownSleeves)
     ObserveAfter("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
@@ -485,7 +487,7 @@ local function Event_OnDraw()
 
         BetterSleeves.showDebugUI = ImGui.Checkbox("Show Debug Info", BetterSleeves.showDebugUI)
         if BetterSleeves.showDebugUI then
-            for slot in next, BetterSleeves.SlotToAreaType do
+            for slot in next, BetterSleeves.slotToAreaType do
                 local item = BetterSleeves:GetItem(slot)
                 if item then
                     local itemName = BetterSleeves:GetItemAppearanceName(item):match("[^&]+")
