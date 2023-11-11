@@ -313,10 +313,15 @@ function BetterSleeves:RollDownSleeves(force)
                 self:RollUpSleeves()
                 return
             elseif res == POVChangeResult.ItemBlacklisted then
-                self:ChangeItemPOV(slot, true)
+                self:RollUpSleevesForSlot(slot)
             end
         end
     end
+end
+
+---@param slot string
+function BetterSleeves:RollUpSleevesForSlot(slot)
+    self:ChangeItemPOV(slot, true, { ["empty_appearance_default"] = true })
 end
 
 function BetterSleeves:RollUpSleeves()
@@ -325,7 +330,7 @@ function BetterSleeves:RollUpSleeves()
 
     self.rolledDown = false
     for slot in next, self.SlotToAreaType do
-        self:ChangeItemPOV(slot, true)
+        self:RollUpSleevesForSlot(slot)
     end
 end
 
