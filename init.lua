@@ -207,13 +207,13 @@ function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, 
         end
     end
 
-    local newItemName, changed;
+    local newItemName, n;
     if fpp then
-        newItemName, changed = itemName:gsub("&TPP", "&FPP")
+        newItemName, n = itemName:gsub("&TPP", "&FPP")
     else
-        newItemName, changed = itemName:gsub("&FPP", "&TPP")
+        newItemName, n = itemName:gsub("&FPP", "&TPP")
     end
-    if not changed then return POVChangeResult.SamePOV; end
+    if n == 0 then return POVChangeResult.SamePOV; end
 
     tSys:ChangeItemAppearanceByName(player, item:GetItemID(), newItemName)
     return POVChangeResult.Changed
