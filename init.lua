@@ -299,9 +299,16 @@ function BetterSleeves:RollDownSleeves(force)
             self:ChangeItemPOV(slot, false)
         end
     else
+        local weaponBlacklist = self.rollDownWeaponBlacklist
+        local missionBlacklist = self.rollDownMissionBlacklist
         for _, slot in next, slots do
-            local res = self:ChangeItemPOV(slot, false, self.rollDownItemBlacklist, self.rollDownWeaponBlacklist, self.rollDownMissionBlacklist)
-            if (res == POVChangeResult.WeaponBlacklisted or
+            local res = self:ChangeItemPOV(slot, false, self.rollDownItemBlacklist, weaponBlacklist, missionBlacklist)
+            if (res == POVChangeResult.Changed or
+                res == POVChangeResult.SamePOV) then
+                -- If res is in a "not blacklisted state" then weapon and mission blacklist don't have to be checked again.
+                weaponBlacklist = nil
+                missionBlacklist = nil
+            elseif (res == POVChangeResult.WeaponBlacklisted or
                 res == POVChangeResult.MissionBlacklisted) then
                 self:RollUpSleeves()
                 return
