@@ -190,9 +190,6 @@ function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, 
 
     if missionBlacklist then
         local quest, obj = self:GetTrackedMissionAndObjectiveIds()
-        print(quest)
-        print(table.concat{quest, ".*"})
-        print(json.encode(missionBlacklist))
         if quest and (
             missionBlacklist[table.concat{quest, ".*"}] or
             missionBlacklist[table.concat{quest, ".", obj}]
