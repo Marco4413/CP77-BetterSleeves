@@ -320,6 +320,7 @@ local function Event_OnInit()
     BetterSleeves.slotToAreaType["OutfitSlots.TorsoMiddle"] = {}
     BetterSleeves.slotToAreaType["OutfitSlots.TorsoInner"] = {}
     BetterSleeves.slotToAreaType["OutfitSlots.TorsoUnder"] = {}
+    BetterSleeves.slotToAreaType["OutfitSlots.TorsoAux"] = {}
     BetterSleeves.slotToAreaType["OutfitSlots.BodyOuter"] = {}
     BetterSleeves.slotToAreaType["OutfitSlots.BodyMiddle"] = {}
     BetterSleeves.slotToAreaType["OutfitSlots.BodyInner"] = {}
