@@ -47,6 +47,7 @@ function BetterSleeves:ResetConfig()
     self.rollDownDelay = 1.0
     self.rollDownItemBlacklist = {}
     self.rollDownWeaponBlacklist = {}
+    self.rollDownMissionBlacklist = {}
     -- Add all blacklist entries
     self:MigrateConfigFromVersion(nil)
 end
@@ -59,6 +60,7 @@ function BetterSleeves:SaveConfig()
         rollDownDelay = self.rollDownDelay,
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
+        rollDownMissionBlacklist = self.rollDownMissionBlacklist,
     }))
     io.close(file)
 end
@@ -109,6 +111,10 @@ function BetterSleeves:LoadConfig()
 
         if (type(config.rollDownWeaponBlacklist) == "table") then
             self.rollDownWeaponBlacklist = config.rollDownWeaponBlacklist
+        end
+
+        if (type(config.rollDownMissionBlacklist) == "table") then
+            self.rollDownMissionBlacklist = config.rollDownMissionBlacklist
         end
 
         self:MigrateConfigFromVersion(config.version)
