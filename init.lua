@@ -26,7 +26,6 @@ OTHER DEALINGS IN THE SOFTWARE.
 local BetterSleeves = {
     autoRoll = true,
     showUI = false,
-    showDebugUI = false,
     delayTimer = 1.0,
     delayCallback = nil,
     rolledDown = false,
