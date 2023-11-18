@@ -358,13 +358,14 @@ end
 local function Event_OnDraw()
     if not BetterSleeves.showUI then return; end
     if ImGui.Begin("Better Sleeves") then
-        if ImGui.Button("Roll Down Sleeves") then
-            BetterSleeves:RollDownSleeves()
-        end
+        ImGui.Text("Sleeves |")
+        ImGui.SameLine()
 
-        if ImGui.Button("Roll Up Sleeves") then
-            BetterSleeves:RollUpSleeves()
-        end
+        if ImGui.Button("Roll Down") then BetterSleeves:RollDownSleeves(); end
+        ImGui.SameLine()
+
+        if ImGui.Button("Roll Up") then BetterSleeves:RollUpSleeves(); end
+        ImGui.Separator()
 
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
@@ -434,18 +435,6 @@ local function Event_OnDraw()
             ImGui.PopID()
         end
 
-        if ImGui.Button("Reload Config") then
-            BetterSleeves:LoadConfig()
-        end
-
-        if ImGui.Button("Save Config") then
-            BetterSleeves:SaveConfig()
-        end
-
-        if ImGui.Button("Reset Config") then
-            BetterSleeves:ResetConfig()
-        end
-
         if ImGui.CollapsingHeader("Quick Blacklist") then
             ImGui.TextWrapped("Within this section you can quickly blacklist equipped items, active weapons and quests.")
 
@@ -497,6 +486,20 @@ local function Event_OnDraw()
                 ImGui.PopID()
             end
         end
+
+        ImGui.Separator()
+
+        ImGui.Text("Config |")
+        ImGui.SameLine()
+
+        if ImGui.Button("Load") then BetterSleeves:LoadConfig(); end
+        ImGui.SameLine()
+
+        if ImGui.Button("Save") then BetterSleeves:SaveConfig(); end
+        ImGui.SameLine()
+
+        if ImGui.Button("Reset") then BetterSleeves:ResetConfig(); end
+        ImGui.Separator()
     end
 end
 
