@@ -441,13 +441,14 @@ local function Event_OnDraw()
             BetterSleeves:ResetConfig()
         end
 
-        BetterSleeves.showDebugUI = ImGui.Checkbox("Show Debug Info", BetterSleeves.showDebugUI)
-        if BetterSleeves.showDebugUI then
+        if ImGui.CollapsingHeader("Quick Blacklist") then
+            ImGui.TextWrapped("Within this section you can quickly blacklist equipped items, active weapons and quests.")
+
             for slot in next, BetterSleeves.slotToAreaType do
                 local item = BetterSleeves:GetItem(slot)
                 if item then
                     local itemName = BetterSleeves:GetItemAppearanceName(item):match("[^&]+")
-                    ImGui.PushID(table.concat{ "slot-debug_", slot })
+                    ImGui.PushID(table.concat{ "slot-qb_", slot })
                     ImGui.Text(table.concat { slot:match("%.(.+)"), " Item: ", itemName })
                     ImGui.SameLine()
                     if ImGui.Button("Blacklist") then
@@ -462,7 +463,7 @@ local function Event_OnDraw()
                 local weapon = player:GetActiveWeapon()
                 if weapon then
                     local weaponName = weapon:GetWeaponRecord():FriendlyName()
-                    ImGui.PushID("weapon-debug")
+                    ImGui.PushID("weapon-qb")
                     ImGui.Text("Weapon Name: " .. weaponName)
                     ImGui.SameLine()
                     if ImGui.Button("Blacklist") then
@@ -474,7 +475,7 @@ local function Event_OnDraw()
 
             local quest, obj = BetterSleeves:GetTrackedMissionAndObjectiveIds()
             if quest then
-                ImGui.PushID("quest-debug")
+                ImGui.PushID("quest-qb")
                 ImGui.Text("Quest ID: " .. quest)
                 ImGui.SameLine()
                 if ImGui.Button("Blacklist") then
@@ -482,7 +483,7 @@ local function Event_OnDraw()
                 end
                 ImGui.PopID()
 
-                ImGui.PushID("objective-debug")
+                ImGui.PushID("objective-qb")
                 ImGui.Text("Objective ID: " .. obj)
                 ImGui.SameLine()
                 if ImGui.Button("Blacklist") then
