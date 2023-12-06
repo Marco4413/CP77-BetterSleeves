@@ -20,7 +20,7 @@ You can add filters through the mod's CET UI for weapons and items that you don'
 
 ### Requirements
 
-- [CET 1.27+](https://github.com/yamashi/CyberEngineTweaks)
+- [CET 1.29.1+](https://github.com/yamashi/CyberEngineTweaks)
 
 ### What version should I download?
 
