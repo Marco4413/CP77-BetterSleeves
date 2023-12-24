@@ -39,6 +39,8 @@ local BetterSleeves = {
     -- Populated within Event_OnInit
     slotToAreaType = {},
     appearanceSuffixCameraRecord = nil,
+    gorillaArmsWeaponName = "w_strong_arms",
+    gorillaArmsRollUpOnDoorOpen = true,
 }
 
 function BetterSleeves:ResetConfig()
@@ -54,12 +56,13 @@ end
 function BetterSleeves:SaveConfig()
     local file = io.open("data/config.json", "w")
     file:write(json.encode({
-        version = 2,
+        version = 3,
         autoRoll = self.autoRoll,
         rollDownDelay = self.rollDownDelay,
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
         rollDownMissionBlacklist = self.rollDownMissionBlacklist,
+        gorillaArmsRollUpOnDoorOpen = self.gorillaArmsRollUpOnDoorOpen,
     }))
     io.close(file)
 end
@@ -82,6 +85,11 @@ function BetterSleeves:MigrateConfigFromVersion(version)
         version = 2
         self.rollDownItemBlacklist["empty_appearance_default"] = true
         self.rollDownItemBlacklist["t2_jacket_21_edgerunners_01_"] = true
+    end
+
+    if version <= 2 then
+        version = 3
+        self.gorillaArmsRollUpOnDoorOpen = true
     end
 
     -- Migrate from version x to latest
@@ -114,6 +122,10 @@ function BetterSleeves:LoadConfig()
 
         if (type(config.rollDownMissionBlacklist) == "table") then
             self.rollDownMissionBlacklist = config.rollDownMissionBlacklist
+        end
+
+        if (type(config.gorillaArmsRollUpOnDoorOpen) == "boolean") then
+            self.gorillaArmsRollUpOnDoorOpen = config.gorillaArmsRollUpOnDoorOpen
         end
 
         self:MigrateConfigFromVersion(config.version)
@@ -324,6 +336,25 @@ local function Event_RollDownSleeves()
     BetterSleeves.delayCallback = Event_RollDownSleevesCB
 end
 
+local function Event_DoorControllerPS_OnActionDemolition()
+    if not (
+        BetterSleeves.autoRoll and
+        BetterSleeves.gorillaArmsRollUpOnDoorOpen
+    ) then return; end
+
+    local player = Game.GetPlayer()
+    if not player then return; end
+
+    local weapon = player:GetActiveWeapon()
+    if not weapon then return; end
+
+    local weaponName = weapon:GetWeaponRecord():FriendlyName()
+    if weaponName == BetterSleeves.gorillaArmsWeaponName then
+        BetterSleeves:RollUpSleeves()
+        Event_RollDownSleeves()
+    end
+end
+
 local function Event_OnInit()
     BetterSleeves:ResetConfig() -- Loads default settings
     BetterSleeves:LoadConfig()
@@ -352,6 +383,8 @@ local function Event_OnInit()
     ObserveAfter("JournalManager", "OnQuestEntryTracked", Event_RollDownSleeves)
     ObserveAfter("JournalManager", "OnQuestEntryUntracked", Event_RollDownSleeves)
     ObserveAfter("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_RollDownSleeves)
+
+    ObserveAfter("DoorControllerPS", "OnActionDemolition", Event_DoorControllerPS_OnActionDemolition)
 
     -- PlayerPuppet.OnItemRemovedFromSlot is also called when changing vehicle camera
     ObserveAfter("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
@@ -386,7 +419,12 @@ local function Event_OnDraw()
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
             BetterSleeves.rollDownDelay = ImGui.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
+            BetterSleeves.gorillaArmsRollUpOnDoorOpen = ImGui.Checkbox("Roll Up on Gorilla Arms Door Open*", BetterSleeves.gorillaArmsRollUpOnDoorOpen)
+            if ImGui.IsItemHovered() then
+                ImGui.SetTooltip("Uses the global roll down delay to roll sleeves back down.")
+            end
         end
+        ImGui.Separator()
 
         if ImGui.CollapsingHeader("Item Blacklist") then
             ImGui.PushID("item-blacklist")
