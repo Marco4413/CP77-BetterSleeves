@@ -49,6 +49,7 @@ function BetterSleeves:ResetConfig()
     self.rollDownItemBlacklist = {}
     self.rollDownWeaponBlacklist = {}
     self.rollDownMissionBlacklist = {}
+    self.gorillaArmsRollUpOnDoorOpen = true
     -- Add all blacklist entries
     self:MigrateConfigFromVersion(nil)
 end
