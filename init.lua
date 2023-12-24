@@ -341,14 +341,15 @@ local function Event_DoorControllerPS_OnActionDemolition()
     local player = Game.GetPlayer()
     if not player then return; end
 
-    local weapon = player:GetActiveWeapon()
-    if not weapon then return; end
+    local eqSys = Game.GetScriptableSystemsContainer():Get("EquipmentSystem")
+    local armsCybId = eqSys:GetActiveItem(player, gamedataEquipmentArea.ArmsCW)
+    if not armsCybId then return; end
 
-    local weaponName = weapon:GetWeaponRecord():FriendlyName()
-    if weaponName == BetterSleeves.gorillaArmsWeaponName then
-        BetterSleeves:RollUpSleeves()
-        Event_RollDownSleeves()
-    end
+    local armsCybName = TweakDB:GetRecord(armsCybId.id):FriendlyName()
+    if armsCybName ~= BetterSleeves.gorillaArmsWeaponName then return; end
+
+    BetterSleeves:RollUpSleeves()
+    Event_RollDownSleeves()
 end
 
 local function Event_OnInit()
