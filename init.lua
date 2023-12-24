@@ -41,6 +41,7 @@ local BetterSleeves = {
     appearanceSuffixCameraRecord = nil,
     gorillaArmsWeaponName = "w_strong_arms",
     gorillaArmsRollUpOnDoorOpen = true,
+    gorillaArmsRollDownDelay = 3.15,
 }
 
 function BetterSleeves:ResetConfig()
@@ -50,6 +51,7 @@ function BetterSleeves:ResetConfig()
     self.rollDownWeaponBlacklist = {}
     self.rollDownMissionBlacklist = {}
     self.gorillaArmsRollUpOnDoorOpen = true
+    self.gorillaArmsRollDownDelay = 3.15
     -- Add all blacklist entries
     self:MigrateConfigFromVersion(nil)
 end
@@ -64,6 +66,7 @@ function BetterSleeves:SaveConfig()
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
         rollDownMissionBlacklist = self.rollDownMissionBlacklist,
         gorillaArmsRollUpOnDoorOpen = self.gorillaArmsRollUpOnDoorOpen,
+        gorillaArmsRollDownDelay = self.gorillaArmsRollDownDelay,
     }))
     io.close(file)
 end
@@ -122,6 +125,10 @@ function BetterSleeves:LoadConfig()
 
         if (type(config.gorillaArmsRollUpOnDoorOpen) == "boolean") then
             self.gorillaArmsRollUpOnDoorOpen = config.gorillaArmsRollUpOnDoorOpen
+        end
+
+        if (type(config.gorillaArmsRollDownDelay) == "number") then
+            self.gorillaArmsRollDownDelay = config.gorillaArmsRollDownDelay
         end
 
         self:MigrateConfigFromVersion(config.version)
@@ -328,8 +335,10 @@ end
 
 local function Event_RollDownSleeves()
     if not BetterSleeves.autoRoll then return; end
-    BetterSleeves.delayTimer = BetterSleeves.rollDownDelay
-    BetterSleeves.delayCallback = Event_RollDownSleevesCB
+    if (not BetterSleeves.delayCallback) or BetterSleeves.delayTimer < BetterSleeves.rollDownDelay then
+        BetterSleeves.delayTimer = BetterSleeves.rollDownDelay
+        BetterSleeves.delayCallback = Event_RollDownSleevesCB
+    end
 end
 
 local function Event_DoorControllerPS_OnActionDemolition()
@@ -349,7 +358,10 @@ local function Event_DoorControllerPS_OnActionDemolition()
     if armsCybName ~= BetterSleeves.gorillaArmsWeaponName then return; end
 
     BetterSleeves:RollUpSleeves()
-    Event_RollDownSleeves()
+    if (not BetterSleeves.delayCallback) or BetterSleeves.delayTimer < BetterSleeves.gorillaArmsRollDownDelay then
+        BetterSleeves.delayTimer = BetterSleeves.gorillaArmsRollDownDelay
+        BetterSleeves.delayCallback = Event_RollDownSleevesCB
+    end
 end
 
 local function Event_OnInit()
@@ -416,10 +428,14 @@ local function Event_OnDraw()
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
             BetterSleeves.rollDownDelay = ImGui.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
-            BetterSleeves.gorillaArmsRollUpOnDoorOpen = ImGui.Checkbox("Roll Up on Gorilla Arms Door Open*", BetterSleeves.gorillaArmsRollUpOnDoorOpen)
-            if ImGui.IsItemHovered() then
-                ImGui.SetTooltip("Uses the global roll down delay to roll sleeves back down.")
+            ImGui.Separator()
+
+            ImGui.PushID("auto-roll_gorilla-arms")
+            BetterSleeves.gorillaArmsRollUpOnDoorOpen = ImGui.Checkbox("Roll Up on Gorilla Arms Door Open", BetterSleeves.gorillaArmsRollUpOnDoorOpen)
+            if BetterSleeves.gorillaArmsRollUpOnDoorOpen then
+                BetterSleeves.gorillaArmsRollDownDelay = ImGui.DragFloat("Roll Down Delay", BetterSleeves.gorillaArmsRollDownDelay, 0.01, 1, 5, "%.2f")
             end
+            ImGui.PopID()
         end
         ImGui.Separator()
 
