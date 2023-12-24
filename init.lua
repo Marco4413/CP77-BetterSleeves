@@ -302,12 +302,26 @@ function BetterSleeves:ToggleSleeves(force)
     end
 end
 
+local function Event_RollDownSleevesCB()
+    local player = Game.GetPlayer()
+    if not player then return; end
+
+    -- Handle Vehicles TPP
+    local vehicle = player:GetMountedVehicle()
+    if vehicle then
+        local cameraManager = vehicle:GetCameraManager()
+        if cameraManager and cameraManager:IsTPPActive() then
+            return
+        end
+    end
+
+    BetterSleeves:RollDownSleeves()
+end
+
 local function Event_RollDownSleeves()
     if not BetterSleeves.autoRoll then return; end
     BetterSleeves.delayTimer = BetterSleeves.rollDownDelay
-    BetterSleeves.delayCallback = function ()
-        BetterSleeves:RollDownSleeves()
-    end
+    BetterSleeves.delayCallback = Event_RollDownSleevesCB
 end
 
 local function Event_OnInit()
@@ -335,10 +349,12 @@ local function Event_OnInit()
     ObserveAfter("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
     -- ObserveAfter("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
     ObserveAfter("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_RollDownSleeves)
-    ObserveAfter("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
     ObserveAfter("JournalManager", "OnQuestEntryTracked", Event_RollDownSleeves)
     ObserveAfter("JournalManager", "OnQuestEntryUntracked", Event_RollDownSleeves)
     ObserveAfter("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_RollDownSleeves)
+
+    -- PlayerPuppet.OnItemRemovedFromSlot is also called when changing vehicle camera
+    ObserveAfter("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
 end
 
 local function Event_OnUpdate(dt)
