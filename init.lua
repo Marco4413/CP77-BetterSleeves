@@ -385,18 +385,18 @@ local function Event_OnInit()
     BetterSleeves.slotToAreaType["OutfitSlots.BodyInner"] = {}
     BetterSleeves.slotToAreaType["OutfitSlots.BodyUnder"] = {}
 
-    ObserveBefore("PlayerPuppet", "OnWeaponEquipEvent", Event_RollDownSleeves)
-    ObserveAfter("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
-    -- ObserveAfter("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
-    ObserveAfter("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_RollDownSleeves)
-    ObserveAfter("JournalManager", "OnQuestEntryTracked", Event_RollDownSleeves)
-    ObserveAfter("JournalManager", "OnQuestEntryUntracked", Event_RollDownSleeves)
-    ObserveAfter("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_RollDownSleeves)
+    Observe("PlayerPuppet", "OnWeaponEquipEvent", Event_RollDownSleeves)
+    Observe("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
+    -- Observe("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
+    Observe("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_RollDownSleeves)
+    Observe("JournalManager", "OnQuestEntryTracked", Event_RollDownSleeves)
+    Observe("JournalManager", "OnQuestEntryUntracked", Event_RollDownSleeves)
+    Observe("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_RollDownSleeves)
 
-    ObserveAfter("DoorControllerPS", "OnActionDemolition", Event_DoorControllerPS_OnActionDemolition)
+    Observe("DoorControllerPS", "OnActionDemolition", Event_DoorControllerPS_OnActionDemolition)
 
     -- PlayerPuppet.OnItemRemovedFromSlot is also called when changing vehicle camera
-    ObserveAfter("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
+    Observe("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
 end
 
 local function Event_OnUpdate(dt)
