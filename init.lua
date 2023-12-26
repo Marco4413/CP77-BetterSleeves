@@ -344,16 +344,19 @@ local function AutoRollDownSleevesDelayedCB()
 end
 
 ---Creates a new "Delayed Roll Down Sleeves Event(tm)" if the current delay is less than the new one.
----@param delay number
+---@param delay number Seconds to wait before auto-rolling down sleeves.
+---@return boolean ok Whether or not an Auto-Roll could be performed.
 function BetterSleeves:DoAutoRollDownSleevesDelayed(delay)
-    if (not self.delayCallback) or self.delayTimer < delay then
+    if not BetterSleeves.autoRoll then
+        return false
+    elseif BetterSleeves.autoRoll and ((not self.delayCallback) or self.delayTimer < delay) then
         self.delayTimer = delay
         self.delayCallback = AutoRollDownSleevesDelayedCB
     end
+    return true
 end
 
 local function Event_RollDownSleeves()
-    if not BetterSleeves.autoRoll then return; end
     BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.rollDownDelay)
 end
 
