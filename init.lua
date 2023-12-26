@@ -317,7 +317,7 @@ function BetterSleeves:ToggleSleeves(force)
     end
 end
 
-local function Event_RollDownSleevesCB()
+local function AutoRollDownSleevesDelayedCB()
     local player = Game.GetPlayer()
     if not player then return; end
 
@@ -333,12 +333,18 @@ local function Event_RollDownSleevesCB()
     BetterSleeves:RollDownSleeves()
 end
 
+---Creates a new "Delayed Roll Down Sleeves Event(tm)" if the current delay is less than the new one.
+---@param delay number
+function BetterSleeves:DoAutoRollDownSleevesDelayed(delay)
+    if (not self.delayCallback) or self.delayTimer < delay then
+        self.delayTimer = delay
+        self.delayCallback = AutoRollDownSleevesDelayedCB
+    end
+end
+
 local function Event_RollDownSleeves()
     if not BetterSleeves.autoRoll then return; end
-    if (not BetterSleeves.delayCallback) or BetterSleeves.delayTimer < BetterSleeves.rollDownDelay then
-        BetterSleeves.delayTimer = BetterSleeves.rollDownDelay
-        BetterSleeves.delayCallback = Event_RollDownSleevesCB
-    end
+    BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.rollDownDelay)
 end
 
 local function Event_DoorControllerPS_OnActionDemolition()
@@ -358,10 +364,7 @@ local function Event_DoorControllerPS_OnActionDemolition()
     if armsCybName ~= BetterSleeves.gorillaArmsWeaponName then return; end
 
     BetterSleeves:RollUpSleeves()
-    if (not BetterSleeves.delayCallback) or BetterSleeves.delayTimer < BetterSleeves.gorillaArmsRollDownDelay then
-        BetterSleeves.delayTimer = BetterSleeves.gorillaArmsRollDownDelay
-        BetterSleeves.delayCallback = Event_RollDownSleevesCB
-    end
+    BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.gorillaArmsRollDownDelay)
 end
 
 local function Event_OnInit()
