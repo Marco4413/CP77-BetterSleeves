@@ -25,6 +25,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 local BetterSleeves = {
     autoRoll = true,
+    autoRollOnVehiclesTPP = false,
     showUI = false,
     delayTimer = 1.0,
     delayCallback = nil,
@@ -47,6 +48,7 @@ local BetterSleeves = {
 
 function BetterSleeves:ResetConfig()
     self.autoRoll = true
+    self.autoRollOnVehiclesTPP = false
     self.rollDownDelay = 1.0
     self.rollDownItemBlacklist = {}
     self.rollDownWeaponBlacklist = {}
@@ -62,6 +64,7 @@ function BetterSleeves:SaveConfig()
     file:write(json.encode({
         version = 2,
         autoRoll = self.autoRoll,
+        autoRollOnVehiclesTPP = self.autoRollOnVehiclesTPP,
         rollDownDelay = self.rollDownDelay,
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
@@ -106,6 +109,10 @@ function BetterSleeves:LoadConfig()
 
         if type(config.autoRoll) == "boolean" then
             self.autoRoll = config.autoRoll
+        end
+
+        if type(config.autoRollOnVehiclesTPP) == "boolean" then
+            self.autoRollOnVehiclesTPP = config.autoRollOnVehiclesTPP
         end
 
         if type(config.rollDownDelay) == "number" then
@@ -319,15 +326,17 @@ function BetterSleeves:ToggleSleeves(force)
 end
 
 local function AutoRollDownSleevesDelayedCB()
-    local player = Game.GetPlayer()
-    if not player then return; end
-
-    -- Handle Vehicles TPP
-    local vehicle = player:GetMountedVehicle()
-    if vehicle then
-        local cameraManager = vehicle:GetCameraManager()
-        if cameraManager and cameraManager:IsTPPActive() then
-            return
+    if not BetterSleeves.autoRollOnVehiclesTPP then
+        local player = Game.GetPlayer()
+        if not player then return; end
+    
+        -- Handle Vehicles TPP
+        local vehicle = player:GetMountedVehicle()
+        if vehicle then
+            local cameraManager = vehicle:GetCameraManager()
+            if cameraManager and cameraManager:IsTPPActive() then
+                return
+            end
         end
     end
 
@@ -432,6 +441,10 @@ local function Event_OnDraw()
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
             BetterSleeves.rollDownDelay = ImGui.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
+            BetterSleeves.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", BetterSleeves.autoRollOnVehiclesTPP)
+            if ImGui.IsItemHovered() then
+              ImGui.SetTooltip("*Can cause parts of clothes to disappear in TPP if sleeves are auto-rolled up.");
+            end
             ImGui.Separator()
 
             ImGui.PushID("auto-roll_gorilla-arms")
