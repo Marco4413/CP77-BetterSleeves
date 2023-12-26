@@ -103,37 +103,37 @@ function BetterSleeves:LoadConfig()
         local config = json.decode(configText)
         if not config then return; end
 
-        if (type(config.autoRoll) == "boolean") then
+        if type(config.autoRoll) == "boolean" then
             self.autoRoll = config.autoRoll
         end
 
-        if (type(config.rollDownDelay) == "number") then
+        if type(config.rollDownDelay) == "number" then
             self.rollDownDelay = config.rollDownDelay
         end
 
-        if (type(config.rollDownItemBlacklist) == "table") then
+        if type(config.rollDownItemBlacklist) == "table" then
             self.rollDownItemBlacklist = config.rollDownItemBlacklist
         end
 
-        if (type(config.rollDownWeaponBlacklist) == "table") then
+        if type(config.rollDownWeaponBlacklist) == "table" then
             self.rollDownWeaponBlacklist = config.rollDownWeaponBlacklist
         end
 
-        if (type(config.rollDownMissionBlacklist) == "table") then
+        if type(config.rollDownMissionBlacklist) == "table" then
             self.rollDownMissionBlacklist = config.rollDownMissionBlacklist
         end
 
-        if (type(config.gorillaArmsRollUpOnDoorOpen) == "boolean") then
+        if type(config.gorillaArmsRollUpOnDoorOpen) == "boolean" then
             self.gorillaArmsRollUpOnDoorOpen = config.gorillaArmsRollUpOnDoorOpen
         end
 
-        if (type(config.gorillaArmsRollDownDelay) == "number") then
+        if type(config.gorillaArmsRollDownDelay) == "number" then
             self.gorillaArmsRollDownDelay = config.gorillaArmsRollDownDelay
         end
 
         self:MigrateConfigFromVersion(config.version)
     end)
-    if (not ok) then self:SaveConfig(); end
+    if not ok then self:SaveConfig(); end
 end
 
 ---@param item gameItemObject
