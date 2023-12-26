@@ -28,6 +28,7 @@ local BetterSleeves = {
     showUI = false,
     delayTimer = 1.0,
     delayCallback = nil,
+    ---This is not 100% accurate, and is only used by the "Toggle Sleeves" feature.
     rolledDown = false,
     rollDownDelay = 1.0,
     rollDownItemBlacklist = {},
