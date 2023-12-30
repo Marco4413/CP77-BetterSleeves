@@ -62,7 +62,7 @@ end
 function BetterSleeves:SaveConfig()
     local file = io.open("data/config.json", "w")
     file:write(json.encode({
-        version = 2,
+        version = 3,
         autoRoll = self.autoRoll,
         autoRollOnVehiclesTPP = self.autoRollOnVehiclesTPP,
         rollDownDelay = self.rollDownDelay,
@@ -93,6 +93,11 @@ function BetterSleeves:MigrateConfigFromVersion(version)
         version = 2
         self.rollDownItemBlacklist["empty_appearance_default"] = true
         self.rollDownItemBlacklist["t2_jacket_21_edgerunners_01_"] = true
+    end
+
+    if version <= 2 then
+        version = 3
+        self.rollDownItemBlacklist["outfit_02__trauma_"] = true
     end
 
     -- Migrate from version x to latest
