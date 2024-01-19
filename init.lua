@@ -573,7 +573,7 @@ local function Event_OnDraw()
         if ImGui.CollapsingHeader("Quick Blacklist") then
             ImGui.TextWrapped("Within this section you can quickly blacklist equipped items, active weapons and quests.")
 
-            for slot in next, BetterSleeves.slotToAreaType do
+            for slot in next, BetterSleeves.slotsToRoll do
                 local item = BetterSleeves:GetItem(slot)
                 if item then
                     local itemName = BetterSleeves:GetItemAppearanceName(item):match("[^&]+")
