@@ -35,6 +35,12 @@ local BetterSleeves = {
     rollDownItemBlacklist = {},
     rollDownWeaponBlacklist = {},
     rollDownMissionBlacklist = {},
+    slotsToRoll = {},
+    SlotType = {
+        USER_DEFINED = 0,
+        VANILLA = 1,
+        EQUIPMENT_EX = 2,
+    },
     _newItem = "",
     _newWeapon = "",
     _newMission = "",
@@ -46,6 +52,23 @@ local BetterSleeves = {
     gorillaArmsRollDownDelay = 3.15,
 }
 
+function BetterSleeves:DetectEquipmentExAndAddSlots()
+    if EquipmentEx then
+        -- Equipment-EX Slots
+        self.slotsToRoll["OutfitSlots.TorsoOuter"]  = self.SlotType.EQUIPMENT_EX
+        self.slotsToRoll["OutfitSlots.TorsoMiddle"] = self.SlotType.EQUIPMENT_EX
+        self.slotsToRoll["OutfitSlots.TorsoInner"]  = self.SlotType.EQUIPMENT_EX
+        self.slotsToRoll["OutfitSlots.TorsoUnder"]  = self.SlotType.EQUIPMENT_EX
+        self.slotsToRoll["OutfitSlots.TorsoAux"]    = self.SlotType.EQUIPMENT_EX
+        self.slotsToRoll["OutfitSlots.BodyOuter"]   = self.SlotType.EQUIPMENT_EX
+        self.slotsToRoll["OutfitSlots.BodyMiddle"]  = self.SlotType.EQUIPMENT_EX
+        self.slotsToRoll["OutfitSlots.BodyInner"]   = self.SlotType.EQUIPMENT_EX
+        self.slotsToRoll["OutfitSlots.BodyUnder"]   = self.SlotType.EQUIPMENT_EX
+        return true
+    end
+    return false
+end
+
 function BetterSleeves:ResetConfig()
     self.autoRoll = true
     self.autoRollOnVehiclesTPP = false
@@ -53,6 +76,12 @@ function BetterSleeves:ResetConfig()
     self.rollDownItemBlacklist = {}
     self.rollDownWeaponBlacklist = {}
     self.rollDownMissionBlacklist = {}
+    self.slotsToRoll = {
+        ["AttachmentSlots.Outfit"] = self.SlotType.VANILLA,
+        ["AttachmentSlots.Torso"]  = self.SlotType.VANILLA,
+        ["AttachmentSlots.Chest"]  = self.SlotType.VANILLA
+    }
+    self:DetectEquipmentExAndAddSlots()
     self.gorillaArmsRollUpOnDoorOpen = true
     self.gorillaArmsRollDownDelay = 3.15
     -- Add all blacklist entries
@@ -61,6 +90,14 @@ end
 
 function BetterSleeves:SaveConfig()
     local file = io.open("data/config.json", "w")
+
+    local userSlots = {}
+    for slot, type in next, self.slotsToRoll do
+        if type == self.SlotType.USER_DEFINED then
+            userSlots[slot] = self.SlotType.USER_DEFINED
+        end
+    end
+
     file:write(json.encode({
         version = 3,
         autoRoll = self.autoRoll,
@@ -69,6 +106,7 @@ function BetterSleeves:SaveConfig()
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
         rollDownMissionBlacklist = self.rollDownMissionBlacklist,
+        slotsToRoll = userSlots,
         gorillaArmsRollUpOnDoorOpen = self.gorillaArmsRollUpOnDoorOpen,
         gorillaArmsRollDownDelay = self.gorillaArmsRollDownDelay,
     }))
@@ -134,6 +172,14 @@ function BetterSleeves:LoadConfig()
 
         if type(config.rollDownMissionBlacklist) == "table" then
             self.rollDownMissionBlacklist = config.rollDownMissionBlacklist
+        end
+
+        if type(config.slotsToRoll) == "table" then
+            for slot, type in next, config.slotsToRoll do
+                if type == self.SlotType.USER_DEFINED and not self.slotsToRoll[slot] then
+                    self.slotsToRoll[slot] = type
+                end
+            end
         end
 
         if type(config.gorillaArmsRollUpOnDoorOpen) == "boolean" then
@@ -276,7 +322,7 @@ function BetterSleeves:RollDownSleeves(force)
             end
         end
     else
-        for slot in next, self.slotToAreaType do
+        for slot in next, self.slotsToRoll do
             table.insert(slots, slot)
         end
     end
@@ -316,7 +362,7 @@ function BetterSleeves:RollUpSleeves()
     if not player then return; end
 
     self.rolledDown = false
-    for slot in next, self.slotToAreaType do
+    for slot in next, self.slotsToRoll do
         self:RollUpSleevesForSlot(slot)
     end
 end
@@ -394,17 +440,6 @@ local function Event_OnInit()
     BetterSleeves.slotToAreaType["AttachmentSlots.Outfit"] = gamedataEquipmentArea.Outfit
     BetterSleeves.slotToAreaType["AttachmentSlots.Torso"] = gamedataEquipmentArea.OuterChest
     BetterSleeves.slotToAreaType["AttachmentSlots.Chest"] = gamedataEquipmentArea.InnerChest
-
-    -- Equipment-EX Slots
-    BetterSleeves.slotToAreaType["OutfitSlots.TorsoOuter"] = {}
-    BetterSleeves.slotToAreaType["OutfitSlots.TorsoMiddle"] = {}
-    BetterSleeves.slotToAreaType["OutfitSlots.TorsoInner"] = {}
-    BetterSleeves.slotToAreaType["OutfitSlots.TorsoUnder"] = {}
-    BetterSleeves.slotToAreaType["OutfitSlots.TorsoAux"] = {}
-    BetterSleeves.slotToAreaType["OutfitSlots.BodyOuter"] = {}
-    BetterSleeves.slotToAreaType["OutfitSlots.BodyMiddle"] = {}
-    BetterSleeves.slotToAreaType["OutfitSlots.BodyInner"] = {}
-    BetterSleeves.slotToAreaType["OutfitSlots.BodyUnder"] = {}
 
     Observe("PlayerPuppet", "OnWeaponEquipEvent", Event_RollDownSleeves)
     Observe("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
