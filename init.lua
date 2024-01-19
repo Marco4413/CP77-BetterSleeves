@@ -44,6 +44,7 @@ local BetterSleeves = {
     _newItem = "",
     _newWeapon = "",
     _newMission = "",
+    _newSlot = "",
     -- Populated within Event_OnInit
     slotToAreaType = {},
     appearanceSuffixCameraRecord = nil,
@@ -566,6 +567,57 @@ local function Event_OnDraw()
                 ImGui.SameLine()
                 ImGui.Text(mission)
                 ImGui.PopID()
+            end
+            ImGui.PopID()
+        end
+
+        if ImGui.CollapsingHeader("Slots to Roll") then
+            ImGui.TextWrapped(table.concat{
+                "Within this menu you'll be able to add custom slots to use when rolling sleeves.",
+                " If you don't see any EquipmentEx slot, it means that this mod did not find it installed.",
+                " If you think that's not the case, try pressing the button below.",
+            })
+            ImGui.Separator()
+
+            if ImGui.Button("Detect EquipmentEx") then
+                if BetterSleeves:DetectEquipmentExAndAddSlots() then
+                    BetterSleeves.Log("'Detect EquipmentEx' button has found EquipmentEx.")
+                else
+                    BetterSleeves.Log("'Detect EquipmentEx' button did not find EquipmentEx installed.")
+                end
+            end
+            ImGui.Separator()
+
+            ImGui.PushID("user-slots")
+            if ImGui.Button("+") then
+                if not BetterSleeves.slotsToRoll[BetterSleeves._newSlot] then
+                    BetterSleeves.slotsToRoll[BetterSleeves._newSlot] = BetterSleeves.SlotType.USER_DEFINED
+                    BetterSleeves._newSlot = ""
+                end
+            end
+            ImGui.SameLine()
+            BetterSleeves._newSlot = ImGui.InputText("", BetterSleeves._newSlot, 512)
+
+            for slot, type in next, BetterSleeves.slotsToRoll do
+                if type == BetterSleeves.SlotType.USER_DEFINED then
+                    ImGui.PushID(table.concat{ "user-slots_", slot })
+                    if ImGui.Button("-") then
+                        BetterSleeves.slotsToRoll[slot] = nil
+                    end
+                    ImGui.SameLine()
+                    ImGui.Text(slot .. " (User Defined)")
+                    ImGui.PopID()
+                end
+            end
+
+            for slot, type in next, BetterSleeves.slotsToRoll do
+                if type == BetterSleeves.SlotType.VANILLA then
+                    ImGui.Text(slot .. " (Vanilla)")
+                elseif type == BetterSleeves.SlotType.EQUIPMENT_EX then
+                    ImGui.Text(slot .. " (EquipmentEx)")
+                elseif type ~= BetterSleeves.SlotType.USER_DEFINED then
+                    ImGui.Text(slot .. " (Other Mods)")
+                end
             end
             ImGui.PopID()
         end
