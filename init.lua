@@ -52,6 +52,10 @@ local BetterSleeves = {
     gorillaArmsRollDownDelay = 3.15,
 }
 
+function BetterSleeves.Log(...)
+    print(table.concat{"[ ", os.date("%x %X"), " ][ BetterSleeves ]: ", ...})
+end
+
 function BetterSleeves:DetectEquipmentExAndAddSlots()
     if EquipmentEx then
         -- Equipment-EX Slots
@@ -432,6 +436,9 @@ local function Event_DoorControllerPS_OnActionDemolition()
 end
 
 local function Event_OnInit()
+    if EquipmentEx then
+        BetterSleeves.Log("EquipmentEx found.")
+    end
     BetterSleeves:ResetConfig() -- Loads default settings
     BetterSleeves:LoadConfig()
 
@@ -453,6 +460,7 @@ local function Event_OnInit()
 
     -- PlayerPuppet.OnItemRemovedFromSlot is also called when changing vehicle camera
     Observe("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
+    BetterSleeves.Log("Initialized!")
 end
 
 local function Event_OnUpdate(dt)
