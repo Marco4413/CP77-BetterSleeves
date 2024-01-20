@@ -38,7 +38,7 @@ certain animations.
 
 ### Known Issues
 
-**None!**
+- If a clothing item is both equipped in a base-game slot and Equipment-EX slot, it may not be displayed properly.
 
 ## Development
 
