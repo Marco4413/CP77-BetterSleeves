@@ -36,6 +36,9 @@ inside your `entSkinnedMeshComponent`s within your `.ent` file. Otherwise, hands
 certain animations.
 **The setting is case-sensitive and you should set it on TPP clothing files.**
 
+**There's also a guide available on the [Cyberpunk 2077 modding wiki](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators/modding-guides/items-equipment/first-person-perspective-fixes#problem-1-your-sleeves-render-behind-your-arms).
+Keep in mind that this mod works by swapping FPP models with TPP ones (which lets you switch between both sleeved and sleeveless).**
+
 ### Known Issues
 
 - If a clothing item is both equipped in a base-game slot and Equipment-EX slot, it may not be displayed properly.
