@@ -34,6 +34,7 @@ There are currently 3 separate files:
 If you're making a mod that adds a piece of clothe which has sleeves, remember to set `renderingPlaneAnimationParam` to `renderPlane`
 inside your `entSkinnedMeshComponent`s within your `.ent` file. Otherwise, hands will be drawn on top of it when holding weapons/performing
 certain animations.
+**The setting is case-sensitive and you should set it on TPP clothing files.**
 
 ### Known Issues
 
