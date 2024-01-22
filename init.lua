@@ -576,13 +576,13 @@ local function Event_OnDraw()
         end
 
         if ImGui.CollapsingHeader("Slots to Roll") then
-            ImGui.TextWrapped(table.concat{
-                "Within this menu you'll be able to add custom slots to use when rolling sleeves.",
-                " If you don't see any EquipmentEx slot, it means that this mod did not find it installed.",
-                " If you think that's not the case, try pressing the button below.",
-            })
+            ImGui.TextWrapped("Within this menu you'll be able to add custom slots to use when rolling sleeves.")
             ImGui.Separator()
 
+            ImGui.TextWrapped(table.concat{
+                "If you don't see any EquipmentEx slot, it means that this mod did not find it installed.",
+                " If you think that's not the case, try pressing the button below."
+            })
             if ImGui.Button("Detect EquipmentEx") then
                 if BetterSleeves:DetectEquipmentExAndAddSlots() then
                     BetterSleeves.Log("'Detect EquipmentEx' button has found EquipmentEx.")
