@@ -577,6 +577,10 @@ local function Event_OnDraw()
 
         if ImGui.CollapsingHeader("Slots to Roll") then
             ImGui.TextWrapped("Within this menu you'll be able to add custom slots to use when rolling sleeves.")
+            ImGui.Bullet()
+            ImGui.TextWrapped("Items still need to have separate models for FPP (sleeveless) and TPP (sleeved).")
+            ImGui.Bullet()
+            ImGui.TextWrapped("TPP models must be set correctly to draw on top of player hands.")
             ImGui.Separator()
 
             ImGui.TextWrapped(table.concat{
