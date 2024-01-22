@@ -492,7 +492,9 @@ local function Event_OnDraw()
 
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
+            ImGui.PushItemWidth(100)
             BetterSleeves.rollDownDelay = ImGui.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
+            ImGui.PopItemWidth()
             BetterSleeves.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", BetterSleeves.autoRollOnVehiclesTPP)
             if ImGui.IsItemHovered() then
               ImGui.SetTooltip("*Can cause parts of clothes to disappear in TPP if sleeves are auto-rolled up.");
@@ -502,7 +504,9 @@ local function Event_OnDraw()
             ImGui.PushID("auto-roll_gorilla-arms")
             BetterSleeves.gorillaArmsRollUpOnDoorOpen = ImGui.Checkbox("Roll Up on Gorilla Arms Door Open", BetterSleeves.gorillaArmsRollUpOnDoorOpen)
             if BetterSleeves.gorillaArmsRollUpOnDoorOpen then
+                ImGui.PushItemWidth(100)
                 BetterSleeves.gorillaArmsRollDownDelay = ImGui.DragFloat("Roll Down Delay", BetterSleeves.gorillaArmsRollDownDelay, 0.01, 1, 5, "%.2f")
+                ImGui.PopItemWidth()
             end
             ImGui.PopID()
         end
