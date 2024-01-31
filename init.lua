@@ -23,6 +23,8 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 ]]
 
+local BetterUI = require "BetterUI"
+
 local BetterSleeves = {
     autoRoll = true,
     autoRollOnVehiclesTPP = false,
@@ -413,33 +415,6 @@ function BetterSleeves:DoAutoRollDownSleevesDelayed(delay)
     return true
 end
 
-function BetterSleeves.UI.ButtonAdd()
-    local lineHeight = ImGui.GetTextLineHeightWithSpacing()
-    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0.0)
-    ImGui.PushStyleColor(ImGuiCol.Text, .1, .9, 0, 1)
-    local res = ImGui.Button("+", lineHeight, lineHeight)
-    ImGui.PopStyleColor()
-    ImGui.PopStyleVar()
-    return res
-end
-
-function BetterSleeves.UI.ButtonRemove()
-    local lineHeight = ImGui.GetTextLineHeightWithSpacing()
-    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0.0)
-    ImGui.PushStyleColor(ImGuiCol.Text, .9, .1, 0, 1)
-    local res = ImGui.Button("-", lineHeight, lineHeight)
-    ImGui.PopStyleColor()
-    ImGui.PopStyleVar()
-    return res
-end
-
-function BetterSleeves.UI.DragFloat(...)
-    ImGui.PushItemWidth(100)
-    local value, changed = ImGui.DragFloat(...)
-    ImGui.PopItemWidth()
-    return value, changed
-end
-
 local function Event_RollDownSleeves()
     BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.rollDownDelay)
 end
@@ -526,7 +501,7 @@ local function Event_OnDraw()
 
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
-            BetterSleeves.rollDownDelay = BetterSleeves.UI.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
+            BetterSleeves.rollDownDelay = BetterUI.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
             BetterSleeves.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", BetterSleeves.autoRollOnVehiclesTPP)
             if ImGui.IsItemHovered() then
               ImGui.SetTooltip("*Can cause parts of clothes to disappear in TPP if sleeves are auto-rolled up.");
@@ -536,7 +511,7 @@ local function Event_OnDraw()
             ImGui.PushID("auto-roll_gorilla-arms")
             BetterSleeves.gorillaArmsRollUpOnDoorOpen = ImGui.Checkbox("Roll Up on Gorilla Arms Door Open", BetterSleeves.gorillaArmsRollUpOnDoorOpen)
             if BetterSleeves.gorillaArmsRollUpOnDoorOpen then
-                BetterSleeves.gorillaArmsRollDownDelay = BetterSleeves.UI.DragFloat("Roll Down Delay", BetterSleeves.gorillaArmsRollDownDelay, 0.01, 1, 5, "%.2f")
+                BetterSleeves.gorillaArmsRollDownDelay = BetterUI.DragFloat("Roll Down Delay", BetterSleeves.gorillaArmsRollDownDelay, 0.01, 1, 5, "%.2f")
             end
             ImGui.PopID()
         end
@@ -544,7 +519,7 @@ local function Event_OnDraw()
 
         if ImGui.CollapsingHeader("Item Blacklist") then
             ImGui.PushID("item-blacklist")
-            if BetterSleeves.UI.ButtonAdd() then
+            if BetterUI.ButtonAdd() then
                 BetterSleeves.rollDownItemBlacklist[BetterSleeves._newItem] = true
                 BetterSleeves._newItem = ""
             end
@@ -553,7 +528,7 @@ local function Event_OnDraw()
 
             for item in next, BetterSleeves.rollDownItemBlacklist do
                 ImGui.PushID(table.concat{ "item-blacklist_", item })
-                if BetterSleeves.UI.ButtonRemove() then
+                if BetterUI.ButtonRemove() then
                     BetterSleeves.rollDownItemBlacklist[item] = nil
                 end
                 ImGui.SameLine()
@@ -565,7 +540,7 @@ local function Event_OnDraw()
 
         if ImGui.CollapsingHeader("Weapon Blacklist") then
             ImGui.PushID("weapon-blacklist")
-            if BetterSleeves.UI.ButtonAdd() then
+            if BetterUI.ButtonAdd() then
                 BetterSleeves.rollDownWeaponBlacklist[BetterSleeves._newWeapon] = true
                 BetterSleeves._newWeapon = ""
             end
@@ -574,7 +549,7 @@ local function Event_OnDraw()
 
             for weapon in next, BetterSleeves.rollDownWeaponBlacklist do
                 ImGui.PushID(table.concat{ "weapon-blacklist_", weapon })
-                if BetterSleeves.UI.ButtonRemove() then
+                if BetterUI.ButtonRemove() then
                     BetterSleeves.rollDownWeaponBlacklist[weapon] = nil
                 end
                 ImGui.SameLine()
@@ -586,7 +561,7 @@ local function Event_OnDraw()
 
         if ImGui.CollapsingHeader("Mission Blacklist") then
             ImGui.PushID("mission-blacklist")
-            if BetterSleeves.UI.ButtonAdd() then
+            if BetterUI.ButtonAdd() then
                 BetterSleeves.rollDownMissionBlacklist[BetterSleeves._newMission] = true
                 BetterSleeves._newMission = ""
             end
@@ -595,7 +570,7 @@ local function Event_OnDraw()
 
             for mission in next, BetterSleeves.rollDownMissionBlacklist do
                 ImGui.PushID(table.concat{ "mission-blacklist_", mission })
-                if BetterSleeves.UI.ButtonRemove() then
+                if BetterUI.ButtonRemove() then
                     BetterSleeves.rollDownMissionBlacklist[mission] = nil
                 end
                 ImGui.SameLine()
@@ -631,7 +606,7 @@ local function Event_OnDraw()
             end
 
             ImGui.PushID("user-slots")
-            if BetterSleeves.UI.ButtonAdd() then
+            if BetterUI.ButtonAdd() then
                 if not BetterSleeves.slotsToRoll[BetterSleeves._newSlot] then
                     BetterSleeves.slotsToRoll[BetterSleeves._newSlot] = BetterSleeves.SlotType.USER_DEFINED
                     BetterSleeves._newSlot = ""
@@ -643,7 +618,7 @@ local function Event_OnDraw()
             for slot, type in next, BetterSleeves.slotsToRoll do
                 if type == BetterSleeves.SlotType.USER_DEFINED then
                     ImGui.PushID(table.concat{ "user-slots_", slot })
-                    if BetterSleeves.UI.ButtonRemove() then
+                    if BetterUI.ButtonRemove() then
                         BetterSleeves.slotsToRoll[slot] = nil
                     end
                     ImGui.SameLine()
