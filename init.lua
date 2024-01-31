@@ -509,14 +509,20 @@ end
 local function Event_OnDraw()
     if not BetterSleeves.showUI then return; end
     if ImGui.Begin("Better Sleeves") then
-        ImGui.Text("Sleeves |")
-        ImGui.SameLine()
+        do
+            ImGui.Text("Sleeves |")
+            ImGui.SameLine()
+            
+            local widthAvail, _ = ImGui.GetContentRegionAvail()
+            local lineHeight = ImGui.GetTextLineHeightWithSpacing()
+            local buttonWidth = widthAvail/2 - 2.5
 
-        if ImGui.Button("Roll Down") then BetterSleeves:RollDownSleeves(); end
-        ImGui.SameLine()
-
-        if ImGui.Button("Roll Up") then BetterSleeves:RollUpSleeves(); end
-        ImGui.Separator()
+            if ImGui.Button("Roll Down", buttonWidth, lineHeight) then BetterSleeves:RollDownSleeves(); end
+            ImGui.SameLine()
+    
+            if ImGui.Button("Roll Up", buttonWidth, lineHeight) then BetterSleeves:RollUpSleeves(); end
+            ImGui.Separator()
+        end
 
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
@@ -612,14 +618,17 @@ local function Event_OnDraw()
                 " If you think that's not the case, try pressing the button below."
             })
 
-            if ImGui.Button("Detect EquipmentEx", ImGui.GetWindowContentRegionWidth(), ImGui.GetTextLineHeightWithSpacing()) then
-                if BetterSleeves:DetectEquipmentExAndAddSlots() then
-                    BetterSleeves.Log("'Detect EquipmentEx' button has found EquipmentEx.")
-                else
-                    BetterSleeves.Log("'Detect EquipmentEx' button did not find EquipmentEx installed.")
+            do
+                local widthAvail, _ = ImGui.GetContentRegionAvail()
+                if ImGui.Button("Detect EquipmentEx", widthAvail, ImGui.GetTextLineHeightWithSpacing()) then
+                    if BetterSleeves:DetectEquipmentExAndAddSlots() then
+                        BetterSleeves.Log("'Detect EquipmentEx' button has found EquipmentEx.")
+                    else
+                        BetterSleeves.Log("'Detect EquipmentEx' button did not find EquipmentEx installed.")
+                    end
                 end
+                ImGui.Separator()
             end
-            ImGui.Separator()
 
             ImGui.PushID("user-slots")
             if BetterSleeves.UI.ButtonAdd() then
@@ -709,17 +718,23 @@ local function Event_OnDraw()
 
         ImGui.Separator()
 
-        ImGui.Text("Config |")
-        ImGui.SameLine()
+        do
+            ImGui.Text("Config |")
+            ImGui.SameLine()
 
-        if ImGui.Button("Load") then BetterSleeves:LoadConfig(); end
-        ImGui.SameLine()
+            local widthAvail, _ = ImGui.GetContentRegionAvail()
+            local lineHeight = ImGui.GetTextLineHeightWithSpacing()
+            local buttonWidth = widthAvail/3 - 5
 
-        if ImGui.Button("Save") then BetterSleeves:SaveConfig(); end
-        ImGui.SameLine()
-
-        if ImGui.Button("Reset") then BetterSleeves:ResetConfig(); end
-        ImGui.Separator()
+            if ImGui.Button("Load", buttonWidth, lineHeight) then BetterSleeves:LoadConfig(); end
+            ImGui.SameLine()
+    
+            if ImGui.Button("Save", buttonWidth, lineHeight) then BetterSleeves:SaveConfig(); end
+            ImGui.SameLine()
+    
+            if ImGui.Button("Reset", buttonWidth, lineHeight) then BetterSleeves:ResetConfig(); end
+            ImGui.Separator()
+        end
     end
 end
 
