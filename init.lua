@@ -51,6 +51,7 @@ local BetterSleeves = {
     gorillaArmsWeaponName = "w_strong_arms",
     gorillaArmsRollUpOnDoorOpen = true,
     gorillaArmsRollDownDelay = 3.15,
+    UI = {},
 }
 
 function BetterSleeves.Log(...)
@@ -412,6 +413,33 @@ function BetterSleeves:DoAutoRollDownSleevesDelayed(delay)
     return true
 end
 
+function BetterSleeves.UI.ButtonAdd()
+    local lineHeight = ImGui.GetTextLineHeightWithSpacing()
+    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0.0)
+    ImGui.PushStyleColor(ImGuiCol.Text, .1, .9, 0, 1)
+    local res = ImGui.Button("+", lineHeight, lineHeight)
+    ImGui.PopStyleColor()
+    ImGui.PopStyleVar()
+    return res
+end
+
+function BetterSleeves.UI.ButtonRemove()
+    local lineHeight = ImGui.GetTextLineHeightWithSpacing()
+    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0.0)
+    ImGui.PushStyleColor(ImGuiCol.Text, .9, .1, 0, 1)
+    local res = ImGui.Button("-", lineHeight, lineHeight)
+    ImGui.PopStyleColor()
+    ImGui.PopStyleVar()
+    return res
+end
+
+function BetterSleeves.UI.DragFloat(...)
+    ImGui.PushItemWidth(100)
+    local value, changed = ImGui.DragFloat(...)
+    ImGui.PopItemWidth()
+    return value, changed
+end
+
 local function Event_RollDownSleeves()
     BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.rollDownDelay)
 end
@@ -492,9 +520,7 @@ local function Event_OnDraw()
 
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
-            ImGui.PushItemWidth(100)
-            BetterSleeves.rollDownDelay = ImGui.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
-            ImGui.PopItemWidth()
+            BetterSleeves.rollDownDelay = BetterSleeves.UI.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
             BetterSleeves.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", BetterSleeves.autoRollOnVehiclesTPP)
             if ImGui.IsItemHovered() then
               ImGui.SetTooltip("*Can cause parts of clothes to disappear in TPP if sleeves are auto-rolled up.");
@@ -504,9 +530,7 @@ local function Event_OnDraw()
             ImGui.PushID("auto-roll_gorilla-arms")
             BetterSleeves.gorillaArmsRollUpOnDoorOpen = ImGui.Checkbox("Roll Up on Gorilla Arms Door Open", BetterSleeves.gorillaArmsRollUpOnDoorOpen)
             if BetterSleeves.gorillaArmsRollUpOnDoorOpen then
-                ImGui.PushItemWidth(100)
-                BetterSleeves.gorillaArmsRollDownDelay = ImGui.DragFloat("Roll Down Delay", BetterSleeves.gorillaArmsRollDownDelay, 0.01, 1, 5, "%.2f")
-                ImGui.PopItemWidth()
+                BetterSleeves.gorillaArmsRollDownDelay = BetterSleeves.UI.DragFloat("Roll Down Delay", BetterSleeves.gorillaArmsRollDownDelay, 0.01, 1, 5, "%.2f")
             end
             ImGui.PopID()
         end
@@ -514,7 +538,7 @@ local function Event_OnDraw()
 
         if ImGui.CollapsingHeader("Item Blacklist") then
             ImGui.PushID("item-blacklist")
-            if ImGui.Button("+") then
+            if BetterSleeves.UI.ButtonAdd() then
                 BetterSleeves.rollDownItemBlacklist[BetterSleeves._newItem] = true
                 BetterSleeves._newItem = ""
             end
@@ -523,7 +547,7 @@ local function Event_OnDraw()
 
             for item in next, BetterSleeves.rollDownItemBlacklist do
                 ImGui.PushID(table.concat{ "item-blacklist_", item })
-                if ImGui.Button("-") then
+                if BetterSleeves.UI.ButtonRemove() then
                     BetterSleeves.rollDownItemBlacklist[item] = nil
                 end
                 ImGui.SameLine()
@@ -535,7 +559,7 @@ local function Event_OnDraw()
 
         if ImGui.CollapsingHeader("Weapon Blacklist") then
             ImGui.PushID("weapon-blacklist")
-            if ImGui.Button("+") then
+            if BetterSleeves.UI.ButtonAdd() then
                 BetterSleeves.rollDownWeaponBlacklist[BetterSleeves._newWeapon] = true
                 BetterSleeves._newWeapon = ""
             end
@@ -544,7 +568,7 @@ local function Event_OnDraw()
 
             for weapon in next, BetterSleeves.rollDownWeaponBlacklist do
                 ImGui.PushID(table.concat{ "weapon-blacklist_", weapon })
-                if ImGui.Button("-") then
+                if BetterSleeves.UI.ButtonRemove() then
                     BetterSleeves.rollDownWeaponBlacklist[weapon] = nil
                 end
                 ImGui.SameLine()
@@ -556,7 +580,7 @@ local function Event_OnDraw()
 
         if ImGui.CollapsingHeader("Mission Blacklist") then
             ImGui.PushID("mission-blacklist")
-            if ImGui.Button("+") then
+            if BetterSleeves.UI.ButtonAdd() then
                 BetterSleeves.rollDownMissionBlacklist[BetterSleeves._newMission] = true
                 BetterSleeves._newMission = ""
             end
@@ -565,7 +589,7 @@ local function Event_OnDraw()
 
             for mission in next, BetterSleeves.rollDownMissionBlacklist do
                 ImGui.PushID(table.concat{ "mission-blacklist_", mission })
-                if ImGui.Button("-") then
+                if BetterSleeves.UI.ButtonRemove() then
                     BetterSleeves.rollDownMissionBlacklist[mission] = nil
                 end
                 ImGui.SameLine()
@@ -587,7 +611,8 @@ local function Event_OnDraw()
                 "If you don't see any EquipmentEx slot, it means that this mod did not find it installed.",
                 " If you think that's not the case, try pressing the button below."
             })
-            if ImGui.Button("Detect EquipmentEx") then
+
+            if ImGui.Button("Detect EquipmentEx", ImGui.GetWindowContentRegionWidth(), ImGui.GetTextLineHeightWithSpacing()) then
                 if BetterSleeves:DetectEquipmentExAndAddSlots() then
                     BetterSleeves.Log("'Detect EquipmentEx' button has found EquipmentEx.")
                 else
@@ -597,7 +622,7 @@ local function Event_OnDraw()
             ImGui.Separator()
 
             ImGui.PushID("user-slots")
-            if ImGui.Button("+") then
+            if BetterSleeves.UI.ButtonAdd() then
                 if not BetterSleeves.slotsToRoll[BetterSleeves._newSlot] then
                     BetterSleeves.slotsToRoll[BetterSleeves._newSlot] = BetterSleeves.SlotType.USER_DEFINED
                     BetterSleeves._newSlot = ""
@@ -609,7 +634,7 @@ local function Event_OnDraw()
             for slot, type in next, BetterSleeves.slotsToRoll do
                 if type == BetterSleeves.SlotType.USER_DEFINED then
                     ImGui.PushID(table.concat{ "user-slots_", slot })
-                    if ImGui.Button("-") then
+                    if BetterSleeves.UI.ButtonRemove() then
                         BetterSleeves.slotsToRoll[slot] = nil
                     end
                     ImGui.SameLine()
@@ -638,11 +663,11 @@ local function Event_OnDraw()
                 if item then
                     local itemName = BetterSleeves:GetItemAppearanceName(item):match("[^&]+")
                     ImGui.PushID(table.concat{ "slot-qb_", slot })
-                    ImGui.Text(table.concat { slot:match("%.(.+)"), " Item: ", itemName })
-                    ImGui.SameLine()
                     if ImGui.Button("Blacklist") then
                         BetterSleeves.rollDownItemBlacklist[itemName] = true
                     end
+                    ImGui.SameLine()
+                    ImGui.Text(table.concat { slot:match("%.(.+)"), " Item: ", itemName })
                     ImGui.PopID()
                 end
             end
@@ -653,11 +678,11 @@ local function Event_OnDraw()
                 if weapon then
                     local weaponName = weapon:GetWeaponRecord():FriendlyName()
                     ImGui.PushID("weapon-qb")
-                    ImGui.Text("Weapon Name: " .. weaponName)
-                    ImGui.SameLine()
                     if ImGui.Button("Blacklist") then
                         BetterSleeves.rollDownWeaponBlacklist[weaponName] = true
                     end
+                    ImGui.SameLine()
+                    ImGui.Text("Weapon Name: " .. weaponName)
                     ImGui.PopID()
                 end
             end
@@ -665,19 +690,19 @@ local function Event_OnDraw()
             local quest, obj = BetterSleeves:GetTrackedMissionAndObjectiveIds()
             if quest then
                 ImGui.PushID("quest-qb")
-                ImGui.Text("Quest ID: " .. quest)
-                ImGui.SameLine()
                 if ImGui.Button("Blacklist") then
                     BetterSleeves.rollDownMissionBlacklist[table.concat{quest, ".*"}] = true
                 end
+                ImGui.SameLine()
+                ImGui.Text("Quest ID: " .. quest)
                 ImGui.PopID()
 
                 ImGui.PushID("objective-qb")
-                ImGui.Text("Objective ID: " .. obj)
-                ImGui.SameLine()
                 if ImGui.Button("Blacklist") then
                     BetterSleeves.rollDownMissionBlacklist[table.concat{quest, ".", obj}] = true
                 end
+                ImGui.SameLine()
+                ImGui.Text("Objective ID: " .. obj)
                 ImGui.PopID()
             end
         end
