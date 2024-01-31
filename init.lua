@@ -47,8 +47,9 @@ local BetterSleeves = {
     _newWeapon = "",
     _newMission = "",
     _newSlot = "",
-    -- Populated within Event_OnInit
     slotToAreaType = {},
+    _configInitialized = false,
+    -- Populated within Event_OnInit
     appearanceSuffixCameraRecord = nil,
     gorillaArmsWeaponName = "w_strong_arms",
     gorillaArmsRollUpOnDoorOpen = true,
@@ -444,6 +445,7 @@ local function Event_OnInit()
     end
     BetterSleeves:ResetConfig() -- Loads default settings
     BetterSleeves:LoadConfig()
+    BetterSleeves._configInitialized = true
 
     BetterSleeves.appearanceSuffixCameraRecord = TweakDB:GetRecord("itemsFactoryAppearanceSuffix.Camera")
 
@@ -477,7 +479,9 @@ local function Event_OnUpdate(dt)
 end
 
 local function Event_OnShutdown()
-    BetterSleeves:SaveConfig()
+    if BetterSleeves._configInitialized then
+        BetterSleeves:SaveConfig()
+    end
 end
 
 local function Event_OnDraw()
