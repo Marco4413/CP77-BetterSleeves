@@ -52,8 +52,7 @@ local BetterSleeves = {
     appearanceSuffixCameraRecord = nil,
     gorillaArmsWeaponName = "w_strong_arms",
     gorillaArmsRollUpOnDoorOpen = true,
-    gorillaArmsRollDownDelay = 3.15,
-    UI = {},
+    gorillaArmsRollDownDelay = 3.15
 }
 
 function BetterSleeves.Log(...)
