@@ -52,6 +52,9 @@ function BetterUI.DragFloat(...)
     return value, changed
 end
 
+---@param n number
+---@return number
+---@return number
 function BetterUI.FitNButtonsInContentRegionAvail(n)
     local widthAvail, _ = ImGui.GetContentRegionAvail()
     local lineHeight = ImGui.GetTextLineHeightWithSpacing()
@@ -59,6 +62,9 @@ function BetterUI.FitNButtonsInContentRegionAvail(n)
     return buttonWidth, lineHeight
 end
 
+---@param n number
+---@param label string
+---@return boolean
 function BetterUI.FitButtonN(n, label)
     return ImGui.Button(label, BetterUI.FitNButtonsInContentRegionAvail(n))
 end
