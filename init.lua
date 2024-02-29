@@ -498,10 +498,13 @@ local function Event_OnDraw()
 
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
-            BetterSleeves.rollDownDelay = BetterUI.DragFloat("Roll Down Delay", BetterSleeves.rollDownDelay, 0.01, 1, 5, "%.2f")
+            BetterSleeves.rollDownDelay = BetterUI.DragFloat("Roll Down Delay*", BetterSleeves.rollDownDelay, 0.01, 0.01, 5, "%.2f")
+            if ImGui.IsItemHovered() then
+                ImGui.SetTooltip("*If too low, may stop sleeves from rolling down on TPP to FPP camera transitions.");
+            end
             BetterSleeves.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", BetterSleeves.autoRollOnVehiclesTPP)
             if ImGui.IsItemHovered() then
-              ImGui.SetTooltip("*Can cause parts of clothes to disappear in TPP if sleeves are auto-rolled up.");
+                ImGui.SetTooltip("*Can cause parts of clothes to disappear in TPP if sleeves are auto-rolled up.");
             end
             ImGui.Separator()
 
