@@ -60,24 +60,21 @@ function BetterSleeves.Log(...)
     print(table.concat{"[ ", os.date("%x %X"), " ][ BetterSleeves ]: ", ...})
 end
 
-function BetterSleeves:DetectEquipmentExAndAddSlots()
+function BetterSleeves:DetectEquipmentExAndEnableSlots()
     if EquipmentEx then
         -- Equipment-EX Slots
-        self.slotsToRoll["OutfitSlots.TorsoOuter"]  = self.SlotType.EQUIPMENT_EX
-        self.slotsToRoll["OutfitSlots.TorsoMiddle"] = self.SlotType.EQUIPMENT_EX
-        self.slotsToRoll["OutfitSlots.TorsoInner"]  = self.SlotType.EQUIPMENT_EX
-        self.slotsToRoll["OutfitSlots.TorsoUnder"]  = self.SlotType.EQUIPMENT_EX
-        self.slotsToRoll["OutfitSlots.TorsoAux"]    = self.SlotType.EQUIPMENT_EX
-        self.slotsToRoll["OutfitSlots.BodyOuter"]   = self.SlotType.EQUIPMENT_EX
-        self.slotsToRoll["OutfitSlots.BodyMiddle"]  = self.SlotType.EQUIPMENT_EX
-        self.slotsToRoll["OutfitSlots.BodyInner"]   = self.SlotType.EQUIPMENT_EX
-        self.slotsToRoll["OutfitSlots.BodyUnder"]   = self.SlotType.EQUIPMENT_EX
+        for _, slot in next, self.slotsToRoll do
+            if slot.type == self.SlotType.EQUIPMENT_EX then
+                slot.enabled = true
+            end
+        end
         return true
     end
     return false
 end
 
 function BetterSleeves:ResetConfig()
+    local eqExInstalled = EquipmentEx and true or false
     self.autoRoll = true
     self.autoRollOnVehiclesTPP = false
     self.rollDownDelay = 1.0
@@ -85,11 +82,19 @@ function BetterSleeves:ResetConfig()
     self.rollDownWeaponBlacklist = {}
     self.rollDownMissionBlacklist = {}
     self.slotsToRoll = {
-        ["AttachmentSlots.Outfit"] = self.SlotType.VANILLA,
-        ["AttachmentSlots.Torso"]  = self.SlotType.VANILLA,
-        ["AttachmentSlots.Chest"]  = self.SlotType.VANILLA
+        ["AttachmentSlots.Outfit"]  = { type = self.SlotType.VANILLA, enabled = true },
+        ["AttachmentSlots.Torso"]   = { type = self.SlotType.VANILLA, enabled = true },
+        ["AttachmentSlots.Chest"]   = { type = self.SlotType.VANILLA, enabled = true },
+        ["OutfitSlots.TorsoOuter"]  = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled },
+        ["OutfitSlots.TorsoMiddle"] = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled },
+        ["OutfitSlots.TorsoInner"]  = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled },
+        ["OutfitSlots.TorsoUnder"]  = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled },
+        ["OutfitSlots.TorsoAux"]    = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled },
+        ["OutfitSlots.BodyOuter"]   = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled },
+        ["OutfitSlots.BodyMiddle"]  = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled },
+        ["OutfitSlots.BodyInner"]   = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled },
+        ["OutfitSlots.BodyUnder"]   = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled },
     }
-    self:DetectEquipmentExAndAddSlots()
     self.gorillaArmsRollUpOnDoorOpen = true
     self.gorillaArmsRollDownDelay = 3.15
     -- Add all blacklist entries
@@ -99,22 +104,15 @@ end
 function BetterSleeves:SaveConfig()
     local file = io.open("data/config.json", "w")
 
-    local userSlots = {}
-    for slot, type in next, self.slotsToRoll do
-        if type == self.SlotType.USER_DEFINED then
-            userSlots[slot] = self.SlotType.USER_DEFINED
-        end
-    end
-
     file:write(json.encode({
-        version = 3,
+        version = 4,
         autoRoll = self.autoRoll,
         autoRollOnVehiclesTPP = self.autoRollOnVehiclesTPP,
         rollDownDelay = self.rollDownDelay,
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
         rollDownMissionBlacklist = self.rollDownMissionBlacklist,
-        slotsToRoll = userSlots,
+        slotsToRoll = self.slotsToRoll,
         gorillaArmsRollUpOnDoorOpen = self.gorillaArmsRollUpOnDoorOpen,
         gorillaArmsRollDownDelay = self.gorillaArmsRollDownDelay,
     }))
@@ -144,6 +142,15 @@ function BetterSleeves:MigrateConfigFromVersion(version)
     if version <= 2 then
         version = 3
         self.rollDownItemBlacklist["outfit_02__trauma_"] = true
+    end
+
+    if version <= 3 then
+        version = 4
+        for slotName, slotType in next, self.slotsToRoll do
+            if type(slotType) == "number" then
+                self.slotsToRoll[slotName] = { type = slotType, enabled = true }
+            end
+        end
     end
 
     -- Migrate from version x to latest
@@ -183,9 +190,17 @@ function BetterSleeves:LoadConfig()
         end
 
         if type(config.slotsToRoll) == "table" then
-            for slot, type in next, config.slotsToRoll do
-                if type == self.SlotType.USER_DEFINED and not self.slotsToRoll[slot] then
-                    self.slotsToRoll[slot] = type
+            for slotName, slot in next, config.slotsToRoll do
+                if type(slot) == "number" then
+                    if slot == self.SlotType.USER_DEFINED and not self.slotsToRoll[slotName] then
+                        self.slotsToRoll[slotName] = { type = slot, enabled = true }
+                    end
+                else -- Table
+                    if slot.type == self.SlotType.USER_DEFINED then
+                        self.slotsToRoll[slotName] = slot
+                    elseif self.slotsToRoll[slotName] and self.slotsToRoll[slotName].type == slot.type then
+                        self.slotsToRoll[slotName] = slot
+                    end
                 end
             end
         end
@@ -321,17 +336,19 @@ function BetterSleeves:RollDownSleeves(force)
             local item = TweakDB:GetRecord(clothes[i].visualItem.id)
             if item then
                 local areaType = clothes[i].areaType
-                for slot, at in next, self.slotToAreaType do
-                    if areaType == at then
-                        table.insert(slots, slot)
+                for slotName, at in next, self.slotToAreaType do
+                    if self.slotsToRoll[slotName] and self.slotsToRoll[slotName].enabled and areaType == at then
+                        table.insert(slots, slotName)
                         break
                     end
                 end
             end
         end
     else
-        for slot in next, self.slotsToRoll do
-            table.insert(slots, slot)
+        for slotName, slot in next, self.slotsToRoll do
+            if slot.enabled then
+                table.insert(slots, slotName)
+            end
         end
     end
 
@@ -365,13 +382,16 @@ function BetterSleeves:RollUpSleevesForSlot(slot)
     self:ChangeItemPOV(slot, true, { ["empty_appearance_default"] = true })
 end
 
-function BetterSleeves:RollUpSleeves()
+---@param all boolean
+function BetterSleeves:RollUpSleeves(all)
     local player = Game.GetPlayer()
     if not player then return; end
 
     self.rolledDown = false
-    for slot in next, self.slotsToRoll do
-        self:RollUpSleevesForSlot(slot)
+    for slotName, slot in next, self.slotsToRoll do
+        if all or slot.enabled then
+            self:RollUpSleevesForSlot(slotName)
+        end
     end
 end
 
@@ -589,12 +609,12 @@ local function Event_OnDraw()
             ImGui.Separator()
 
             ImGui.TextWrapped(table.concat{
-                "If you don't see any EquipmentEx slot, it means that this mod did not find it installed.",
+                "If you don't see any EquipmentEx slot *enabled*, it means that this mod did not find it installed.",
                 " If you think that's not the case, try pressing the button below."
             })
 
             if BetterUI.FitButtonN(1, "Detect EquipmentEx") then
-                if BetterSleeves:DetectEquipmentExAndAddSlots() then
+                if BetterSleeves:DetectEquipmentExAndEnableSlots() then
                     BetterSleeves.Log("'Detect EquipmentEx' button has found EquipmentEx.")
                 else
                     BetterSleeves.Log("'Detect EquipmentEx' button did not find EquipmentEx installed.")
@@ -602,35 +622,57 @@ local function Event_OnDraw()
             end
             ImGui.Separator()
 
+            ImGui.TextWrapped(table.concat{
+                "Press this button if you enable/disable slots while Sleeves are rolled down.",
+                " The mod won't try to roll up slots that are not enabled."
+            })
+
+            if BetterUI.FitButtonN(1, "Roll Up ALL Slots") then
+                BetterSleeves:RollUpSleeves(true)
+            end
+            ImGui.Separator()
+
             ImGui.PushID("user-slots")
             if BetterUI.ButtonAdd() then
                 if not BetterSleeves.slotsToRoll[BetterSleeves._newSlot] then
-                    BetterSleeves.slotsToRoll[BetterSleeves._newSlot] = BetterSleeves.SlotType.USER_DEFINED
+                    BetterSleeves.slotsToRoll[BetterSleeves._newSlot] = {
+                        type = BetterSleeves.SlotType.USER_DEFINED,
+                        enabled = true
+                    }
                     BetterSleeves._newSlot = ""
                 end
             end
             ImGui.SameLine()
             BetterSleeves._newSlot = ImGui.InputText("", BetterSleeves._newSlot, 512)
 
-            for slot, type in next, BetterSleeves.slotsToRoll do
-                if type == BetterSleeves.SlotType.USER_DEFINED then
-                    ImGui.PushID(table.concat{ "user-slots_", slot })
+            for slotName, slot in next, BetterSleeves.slotsToRoll do
+                if slot.type == BetterSleeves.SlotType.USER_DEFINED then
+                    ImGui.PushID(table.concat{ "user-slots_", slotName })
                     if BetterUI.ButtonRemove() then
-                        BetterSleeves.slotsToRoll[slot] = nil
+                        BetterSleeves.slotsToRoll[slotName] = nil
                     end
                     ImGui.SameLine()
-                    ImGui.Text(slot .. " (User Defined)")
+                    BetterSleeves.slotsToRoll[slotName].enabled = ImGui.Checkbox("", BetterSleeves.slotsToRoll[slotName].enabled)
+                    ImGui.SameLine()
+                    ImGui.Text(slotName)
                     ImGui.PopID()
                 end
             end
 
-            for slot, type in next, BetterSleeves.slotsToRoll do
-                if type == BetterSleeves.SlotType.VANILLA then
-                    ImGui.Text(slot .. " (Vanilla)")
-                elseif type == BetterSleeves.SlotType.EQUIPMENT_EX then
-                    ImGui.Text(slot .. " (EquipmentEx)")
-                elseif type ~= BetterSleeves.SlotType.USER_DEFINED then
-                    ImGui.Text(slot .. " (Other Mods)")
+            for slotName, slot in next, BetterSleeves.slotsToRoll do
+                if slot.type ~= BetterSleeves.SlotType.USER_DEFINED then
+                    ImGui.PushID(table.concat{ "modded-slots_", slotName })
+                    BetterSleeves.slotsToRoll[slotName].enabled = ImGui.Checkbox("", BetterSleeves.slotsToRoll[slotName].enabled)
+                    ImGui.PopID()
+                    ImGui.SameLine()
+                end
+
+                if slot.type == BetterSleeves.SlotType.VANILLA then
+                    ImGui.Text("[Vanilla] " .. slotName)
+                elseif slot.type == BetterSleeves.SlotType.EQUIPMENT_EX then
+                    ImGui.Text("[EquipmentEx] " .. slotName)
+                elseif slot.type ~= BetterSleeves.SlotType.USER_DEFINED then
+                    ImGui.Text("[Other Mods] " .. slotName)
                 end
             end
             ImGui.PopID()
