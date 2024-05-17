@@ -21,6 +21,7 @@ You can add filters through the mod's CET UI for weapons and items that you don'
 ### Requirements
 
 - [CET 1.32.0+](https://github.com/yamashi/CyberEngineTweaks)
+- [RenderPlaneFix](https://github.com/Marco4413/CP77-RenderPlaneFix) (recommended, dynamically fixes draw order of clothing items)
 
 ### What version should I download?
 
@@ -30,6 +31,8 @@ There are currently 3 separate files:
 3. **BetterSleeves - Archive Fixes**: This is marked as "Optional" and contains **only the fixes to clothing items**. It can be used with other Sleeves mods!
 
 ### Mod Compatibility
+
+**I recommend installing [RenderPlaneFix](https://github.com/Marco4413/CP77-RenderPlaneFix) which tries to dynamically fix rendering order issues for clothing items.**
 
 If you're making a mod that adds a piece of clothe which has sleeves, remember to set `renderingPlaneAnimationParam` to `renderPlane`
 inside your `entSkinnedMeshComponent`s within your `.ent` file. Otherwise, hands will be drawn on top of it when holding weapons/performing
