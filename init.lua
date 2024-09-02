@@ -28,6 +28,7 @@ local Scheduler = require "Scheduler"
 
 local BetterSleeves = {
     autoRoll = true,
+    autoRollDelay = 1.0,
     autoRollOnVehiclesTPP = false,
     syncInventoryPuppet = true,
     syncInventoryPuppetDelay = 1.0,
@@ -35,7 +36,6 @@ local BetterSleeves = {
     scheduler = Scheduler.New(),
     ---This is not 100% accurate, and is only used by the "Toggle Sleeves" feature.
     rolledDown = false,
-    rollDownDelay = 1.0,
     rollDownItemBlacklist = {},
     rollDownWeaponBlacklist = {},
     rollDownMissionBlacklist = {},
@@ -89,10 +89,10 @@ end
 function BetterSleeves:ResetConfig()
     local eqExInstalled = EquipmentEx and true or false
     self.autoRoll = true
+    self.autoRollDelay = 1.0
     self.autoRollOnVehiclesTPP = false
     self.syncInventoryPuppet = true
     self.syncInventoryPuppetDelay = 1.0
-    self.rollDownDelay = 1.0
     self.rollDownItemBlacklist = {}
     self.rollDownWeaponBlacklist = {}
     self.rollDownMissionBlacklist = {}
@@ -129,10 +129,10 @@ function BetterSleeves:SaveConfig()
     file:write(json.encode({
         version = 4,
         autoRoll = self.autoRoll,
+        autoRollDelay = self.autoRollDelay,
         autoRollOnVehiclesTPP = self.autoRollOnVehiclesTPP,
         syncInventoryPuppet = self.syncInventoryPuppet,
         syncInventoryPuppetDelay = self.syncInventoryPuppetDelay,
-        rollDownDelay = self.rollDownDelay,
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
         rollDownMissionBlacklist = self.rollDownMissionBlacklist,
@@ -205,8 +205,8 @@ function BetterSleeves:LoadConfig()
             self.syncInventoryPuppetDelay = config.syncInventoryPuppetDelay
         end
 
-        if type(config.rollDownDelay) == "number" then
-            self.rollDownDelay = config.rollDownDelay
+        if type(config.autoRollDelay) == "number" then
+            self.autoRollDelay = config.autoRollDelay
         end
 
         if type(config.rollDownItemBlacklist) == "table" then
@@ -539,9 +539,8 @@ function BetterSleeves:DoAutoRollDownSleevesDelayed(delay)
     if self.autoRoll then
         self.scheduler:SetTask("auto-roll", AutoRollDownSleevesDelayedCB, delay)
         return true
-    else
-        return false
     end
+    return false
 end
 
 ---Creates a new "Sync Sleeves Event(r)" if the current delay is less than the new one.
@@ -552,17 +551,16 @@ function BetterSleeves:DoSyncSleevesDelayed(delay)
     if Codeware and self.syncInventoryPuppet and not isAutoRolling then
         self.scheduler:SetTask("sync-sleeves", SyncSleevesDelayedCB, delay)
         return true
-    else
-        return false
     end
+    return false
 end
 
 local function Event_SyncSleeves()
     BetterSleeves:DoSyncSleevesDelayed(BetterSleeves.syncInventoryPuppetDelay)
 end
 
-local function Event_RollDownSleeves()
-    BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.rollDownDelay)
+local function Event_UpdateSleeves()
+    BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.autoRollDelay)
     Event_SyncSleeves()
 end
 
@@ -601,17 +599,17 @@ local function Event_OnInit()
     BetterSleeves.slotToAreaType["AttachmentSlots.Torso"] = gamedataEquipmentArea.OuterChest
     BetterSleeves.slotToAreaType["AttachmentSlots.Chest"] = gamedataEquipmentArea.InnerChest
 
-    Observe("PlayerPuppet", "OnWeaponEquipEvent", Event_RollDownSleeves)
-    Observe("PlayerPuppet", "OnItemAddedToSlot", Event_RollDownSleeves)
+    Observe("PlayerPuppet", "OnWeaponEquipEvent", Event_UpdateSleeves)
+    Observe("PlayerPuppet", "OnItemAddedToSlot", Event_UpdateSleeves)
     -- Observe("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
-    Observe("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_RollDownSleeves)
-    Observe("JournalManager", "OnQuestEntryTracked", Event_RollDownSleeves)
-    Observe("JournalManager", "OnQuestEntryUntracked", Event_RollDownSleeves)
-    Observe("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_RollDownSleeves)
+    Observe("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_UpdateSleeves)
+    Observe("JournalManager", "OnQuestEntryTracked", Event_UpdateSleeves)
+    Observe("JournalManager", "OnQuestEntryUntracked", Event_UpdateSleeves)
+    Observe("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_UpdateSleeves)
 
     Observe("DoorControllerPS", "OnActionDemolition", Event_DoorControllerPS_OnActionDemolition)
 
-    Observe("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
+    Observe("VehicleComponent", "OnVehicleCameraChange", Event_UpdateSleeves)
 
     Observe("gameuiInventoryGameController", "RefreshedEquippedItemData", Event_SyncSleeves)
     -- Observe("gameuiInventoryGameController", "RefreshEquippedWardrobeItems", Event_SyncSleeves)
@@ -642,9 +640,9 @@ local function Event_OnDraw()
 
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
         if BetterSleeves.autoRoll then
-            BetterSleeves.rollDownDelay = BetterUI.DragFloat("Roll Down Delay*", BetterSleeves.rollDownDelay, 0.01, 0.01, 5, "%.2f")
+            BetterSleeves.autoRollDelay = BetterUI.DragFloat("Roll Delay*", BetterSleeves.autoRollDelay, 0.01, 0.01, 5, "%.2f")
             if ImGui.IsItemHovered() then
-                ImGui.SetTooltip("*If too low, may stop sleeves from rolling down on TPP to FPP camera transitions.");
+                ImGui.SetTooltip("*If too low, may stop sleeves from rolling down on TPP to FPP camera transitions.")
             end
             BetterSleeves.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", BetterSleeves.autoRollOnVehiclesTPP)
             if ImGui.IsItemHovered() then
