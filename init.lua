@@ -694,7 +694,7 @@ local function Event_OnDraw()
         end
         ImGui.Separator()
 
-        if ImGui.CollapsingHeader("Extras") then
+        if ImGui.CollapsingHeader("Integrations") then
             ImGui.TextWrapped("Everything in this menu is available through integrations with other mods.")
 
             ImGui.Separator()
@@ -719,15 +719,26 @@ local function Event_OnDraw()
                     local playerSystem = Game.GetPlayerSystem()
                     local photoPuppet = playerSystem:GetPhotoPuppet()
 
-                    ImGui.TextWrapped("Roll Sleeves in Photo Mode:")
+                    ImGui.TextWrapped("Photo Mode Sleeves |")
+                    ImGui.SameLine()
                     if BetterUI.FitButtonN(2, "Roll Down") then BetterSleeves:RollDownSleeves(true, {photoPuppet}); end
                     ImGui.SameLine()
                     if BetterUI.FitButtonN(1, "Roll Up") then BetterSleeves:RollUpSleeves(nil, {photoPuppet}); end
                 else
-                    ImGui.TextWrapped("Photo Mode is not active.")
+                    ImGui.TextWrapped("Photo Mode Sleeves | Currently not in Photo Mode.")
                 end
                 ImGui.PopID()
             end
+
+            ImGui.Separator()
+            ImGui.TextWrapped(table.concat{
+                "EquipmentEx: ", EquipmentEx and "Installed" or "Not Installed"
+            })
+
+            ImGui.Separator()
+            ImGui.TextWrapped(table.concat{
+                "RenderPlaneFix: ", GetMod("RenderPlaneFix") and "Installed" or "Not Installed"
+            })
         end
 
         if ImGui.CollapsingHeader("Item Blacklist") then
