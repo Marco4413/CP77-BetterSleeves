@@ -281,6 +281,38 @@ function BetterSleeves:GetTrackedMissionAndObjectiveIds()
     return quest.id, obj.id
 end
 
+---@param checkWardrobe boolean|nil Whether to filter by active wardrobe slots (default: true)
+---@return string[] slots The slots that need to be rolled
+function BetterSleeves:GetActiveSlots(checkWardrobe)
+    checkWardrobe = checkWardrobe == nil and true or checkWardrobe
+
+    local slots = {}
+    local activeClothing = Game.GetWardrobeSystem():GetActiveClothingSet()
+    if checkWardrobe and activeClothing then
+        local clothes = activeClothing.clothingList
+        for i=1, #clothes do
+            local item = TweakDB:GetRecord(clothes[i].visualItem.id)
+            if item then
+                local areaType = clothes[i].areaType
+                for slotName, at in next, self.slotToAreaType do
+                    local slot = self.slotsToRoll[slotName]
+                    if slot and slot.enabled and areaType == at then
+                        table.insert(slots, slotName)
+                        break
+                    end
+                end
+            end
+        end
+    else
+        for slotName, slot in next, self.slotsToRoll do
+            if slot.enabled then
+                table.insert(slots, slotName)
+            end
+        end
+    end
+    return slots
+end
+
 ---@return gamePuppet[] puppets All puppets where sleeves need to be handled
 function BetterSleeves:GetActivePuppets()
     local puppets = {Game.GetPlayer()}
@@ -351,30 +383,7 @@ function BetterSleeves:RollDownSleeves(force, puppets)
     
     self.rolledDown = true
 
-    local slots = {}
-    local activeClothing = Game.GetWardrobeSystem():GetActiveClothingSet()
-    if activeClothing then
-        local clothes = activeClothing.clothingList
-        for i=1, #clothes do
-            local item = TweakDB:GetRecord(clothes[i].visualItem.id)
-            if item then
-                local areaType = clothes[i].areaType
-                for slotName, at in next, self.slotToAreaType do
-                    if self.slotsToRoll[slotName] and self.slotsToRoll[slotName].enabled and areaType == at then
-                        table.insert(slots, slotName)
-                        break
-                    end
-                end
-            end
-        end
-    else
-        for slotName, slot in next, self.slotsToRoll do
-            if slot.enabled then
-                table.insert(slots, slotName)
-            end
-        end
-    end
-
+    local slots = self:GetActiveSlots(true)
     local puppets = puppets or self:GetActivePuppets()
     if force then
         for _, slot in next, slots do
