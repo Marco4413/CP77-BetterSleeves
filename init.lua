@@ -128,7 +128,7 @@ function BetterSleeves:SaveConfig()
 end
 
 function BetterSleeves:MigrateConfigFromVersion(version)
-    if not version then
+    if not version or type(version) ~= "number" then
         -- Migrate from version 0 to 1
         version = 1
         self.rollDownItemBlacklist["outfit_01__q305__hazmat_"] = true
