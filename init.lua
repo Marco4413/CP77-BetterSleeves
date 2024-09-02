@@ -694,7 +694,6 @@ local function Event_OnDraw()
                 ImGui.PopID()
             end
         end
-        ImGui.Separator()
 
         if ImGui.CollapsingHeader("Item Blacklist") then
             ImGui.PushID("item-blacklist")
