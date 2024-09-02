@@ -24,13 +24,14 @@ OTHER DEALINGS IN THE SOFTWARE.
 ]]
 
 local BetterUI = require "BetterUI"
+local Scheduler = require "Scheduler"
 
 local BetterSleeves = {
     autoRoll = true,
     autoRollOnVehiclesTPP = false,
+    syncInventoryPuppet = true,
     showUI = false,
-    delayTimer = 1.0,
-    delayCallback = nil,
+    scheduler = Scheduler.New(),
     ---This is not 100% accurate, and is only used by the "Toggle Sleeves" feature.
     rolledDown = false,
     rollDownDelay = 1.0,
@@ -59,6 +60,8 @@ local BetterSleeves = {
 function BetterSleeves.Log(...)
     print(table.concat{"[ ", os.date("%x %X"), " ][ BetterSleeves ]: ", ...})
 end
+
+BetterSleeves.scheduler:SetLogger(BetterSleeves.Log)
 
 function BetterSleeves:DetectEquipmentExAndEnableSlots()
     if EquipmentEx then
@@ -457,11 +460,10 @@ end
 ---@param delay number Seconds to wait before auto-rolling down sleeves.
 ---@return boolean ok Whether or not an Auto-Roll could be performed.
 function BetterSleeves:DoAutoRollDownSleevesDelayed(delay)
-    if not BetterSleeves.autoRoll then
+    if self.autoRoll then
+        self.scheduler:SetTask("auto-roll", AutoRollDownSleevesDelayedCB, delay)
+    else
         return false
-    elseif BetterSleeves.autoRoll and ((not self.delayCallback) or self.delayTimer < delay) then
-        self.delayTimer = delay
-        self.delayCallback = AutoRollDownSleevesDelayedCB
     end
     return true
 end
@@ -520,13 +522,7 @@ local function Event_OnInit()
 end
 
 local function Event_OnUpdate(dt)
-    if BetterSleeves.delayTimer <= 0 or not BetterSleeves.delayCallback then return; end
-
-    BetterSleeves.delayTimer = BetterSleeves.delayTimer - dt
-    if BetterSleeves.delayTimer <= 0 then
-        BetterSleeves.delayCallback()
-        BetterSleeves.delayCallback = nil
-    end
+    BetterSleeves.scheduler:Update(dt)
 end
 
 local function Event_OnShutdown()
