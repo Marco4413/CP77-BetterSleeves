@@ -30,6 +30,7 @@ local BetterSleeves = {
     autoRoll = true,
     autoRollOnVehiclesTPP = false,
     syncInventoryPuppet = true,
+    syncInventoryPuppetDelay = 1.0,
     showUI = false,
     scheduler = Scheduler.New(),
     ---This is not 100% accurate, and is only used by the "Toggle Sleeves" feature.
@@ -77,10 +78,20 @@ function BetterSleeves:DetectEquipmentExAndEnableSlots()
     return false
 end
 
+function BetterSleeves:DetectCodewareAndSetupHooks()
+    -- No Hooks?
+    if Codeware then
+        return true
+    end
+    return false
+end
+
 function BetterSleeves:ResetConfig()
     local eqExInstalled = EquipmentEx and true or false
     self.autoRoll = true
     self.autoRollOnVehiclesTPP = false
+    self.syncInventoryPuppet = true
+    self.syncInventoryPuppetDelay = 1.0
     self.rollDownDelay = 1.0
     self.rollDownItemBlacklist = {}
     self.rollDownWeaponBlacklist = {}
@@ -119,6 +130,8 @@ function BetterSleeves:SaveConfig()
         version = 4,
         autoRoll = self.autoRoll,
         autoRollOnVehiclesTPP = self.autoRollOnVehiclesTPP,
+        syncInventoryPuppet = self.syncInventoryPuppet,
+        syncInventoryPuppetDelay = self.syncInventoryPuppetDelay,
         rollDownDelay = self.rollDownDelay,
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
@@ -182,6 +195,14 @@ function BetterSleeves:LoadConfig()
 
         if type(config.autoRollOnVehiclesTPP) == "boolean" then
             self.autoRollOnVehiclesTPP = config.autoRollOnVehiclesTPP
+        end
+
+        if type(config.syncInventoryPuppet) == "boolean" then
+            self.syncInventoryPuppet = config.syncInventoryPuppet
+        end
+
+        if type(config.syncInventoryPuppetDelay) == "number" then
+            self.syncInventoryPuppetDelay = config.syncInventoryPuppetDelay
         end
 
         if type(config.rollDownDelay) == "number" then
@@ -316,7 +337,41 @@ end
 ---@return gamePuppet[] puppets All puppets where sleeves need to be handled
 function BetterSleeves:GetActivePuppets()
     local puppets = {Game.GetPlayer()}
+    if Codeware and self.syncInventoryPuppet then
+        local playerSystem = Game.GetPlayerSystem()
+        table.insert(puppets, playerSystem:GetInventoryPuppet())
+    end
     return puppets
+end
+
+function BetterSleeves:SyncPuppetsPOV(puppetSrc, puppetDst, slot)
+    local itemSrc = self:GetItem(puppetSrc, slot)
+    if not itemSrc then return false; end
+    local itemDst = self:GetItem(puppetDst, slot)
+    if not itemDst then return false; end
+
+    local appSrcName = self:GetItemAppearanceName(puppetSrc, itemSrc)
+    if not appSrcName then self:Log("Failed to retrieve appearance name for source."); return false; end
+    local isAppSrcTpp = appSrcName:find("&TPP", 1, true)
+    
+    local appDstName = self:GetItemAppearanceName(puppetDst, itemDst)
+    if not appDstName then self:Log("Failed to retrieve appearance name for destination."); return false; end
+
+    local hasChanged = false
+    if isAppSrcTpp then
+        appDstName, n = appDstName:gsub("&FPP", "&TPP")
+        hasChanged = hasChanged or n > 0
+    else
+        appDstName, n = appDstName:gsub("&TPP", "&FPP")
+        hasChanged = hasChanged or n > 0
+    end
+    
+    if hasChanged then
+        local transactionSystem = Game.GetTransactionSystem()
+        transactionSystem:ChangeItemAppearanceByName(puppetDst, itemDst:GetItemID(), appDstName)
+    end
+
+    return hasChanged
 end
 
 ---@param puppet gamePuppet
@@ -465,20 +520,50 @@ local function AutoRollDownSleevesDelayedCB()
     BetterSleeves:RollDownSleeves()
 end
 
+local function SyncSleevesDelayedCB()
+    local player = Game.GetPlayer()
+    if not player then return; end
+
+    local playerSystem = Game.GetPlayerSystem()
+    local inventoryPuppet = playerSystem:GetInventoryPuppet()
+    local slots = BetterSleeves:GetActiveSlots()
+    for _, slotName in next, slots do
+        BetterSleeves:SyncPuppetsPOV(player, inventoryPuppet, slotName)
+    end
+end
+
 ---Creates a new "Delayed Roll Down Sleeves Event(tm)" if the current delay is less than the new one.
 ---@param delay number Seconds to wait before auto-rolling down sleeves.
 ---@return boolean ok Whether or not an Auto-Roll could be performed.
 function BetterSleeves:DoAutoRollDownSleevesDelayed(delay)
     if self.autoRoll then
         self.scheduler:SetTask("auto-roll", AutoRollDownSleevesDelayedCB, delay)
+        return true
     else
         return false
     end
-    return true
+end
+
+---Creates a new "Sync Sleeves Event(r)" if the current delay is less than the new one.
+---@param delay number Seconds to wait before syncing sleeves.
+---@return boolean ok Whether or not a sync could be performed.
+function BetterSleeves:DoSyncSleevesDelayed(delay)
+    local isAutoRolling = BetterSleeves.scheduler:HasTask("auto-roll")
+    if Codeware and self.syncInventoryPuppet and not isAutoRolling then
+        self.scheduler:SetTask("sync-sleeves", SyncSleevesDelayedCB, delay)
+        return true
+    else
+        return false
+    end
+end
+
+local function Event_SyncSleeves()
+    BetterSleeves:DoSyncSleevesDelayed(BetterSleeves.syncInventoryPuppetDelay)
 end
 
 local function Event_RollDownSleeves()
     BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.rollDownDelay)
+    Event_SyncSleeves()
 end
 
 local function Event_DoorControllerPS_OnActionDemolition()
@@ -502,9 +587,10 @@ local function Event_DoorControllerPS_OnActionDemolition()
 end
 
 local function Event_OnInit()
-    if EquipmentEx then
-        BetterSleeves.Log("EquipmentEx found.")
-    end
+    if Codeware then BetterSleeves.Log("Codeware found."); end
+    if EquipmentEx then BetterSleeves.Log("EquipmentEx found."); end
+    if GetMod("RenderPlaneFix") then BetterSleeves.Log("RenderPlaneFix found."); end
+
     BetterSleeves:ResetConfig() -- Loads default settings
     BetterSleeves:LoadConfig()
     BetterSleeves._configInitialized = true
@@ -525,8 +611,10 @@ local function Event_OnInit()
 
     Observe("DoorControllerPS", "OnActionDemolition", Event_DoorControllerPS_OnActionDemolition)
 
-    -- PlayerPuppet.OnItemRemovedFromSlot is also called when changing vehicle camera
     Observe("VehicleComponent", "OnVehicleCameraChange", Event_RollDownSleeves)
+
+    Observe("gameuiInventoryGameController", "RefreshedEquippedItemData", Event_SyncSleeves)
+    -- Observe("gameuiInventoryGameController", "RefreshEquippedWardrobeItems", Event_SyncSleeves)
     BetterSleeves.Log("Initialized!")
 end
 
@@ -570,6 +658,43 @@ local function Event_OnDraw()
                 BetterSleeves.gorillaArmsRollDownDelay = BetterUI.DragFloat("Roll Down Delay", BetterSleeves.gorillaArmsRollDownDelay, 0.01, 1, 5, "%.2f")
             end
             ImGui.PopID()
+        end
+        ImGui.Separator()
+
+        if ImGui.CollapsingHeader("Extras") then
+            ImGui.TextWrapped("Everything in this menu is available through integrations with other mods.")
+
+            ImGui.Separator()
+            local isCodewareInstalled = Codeware and true or false
+            ImGui.TextWrapped(table.concat{
+                "Codeware: ", isCodewareInstalled and "Installed" or "Not Installed"
+            })
+
+            if isCodewareInstalled then
+                ImGui.PushID("codeware-integration")
+                BetterSleeves.syncInventoryPuppet = ImGui.Checkbox("Sync Inventory Character", BetterSleeves.syncInventoryPuppet)
+
+                if BetterSleeves.syncInventoryPuppet then
+                    BetterSleeves.syncInventoryPuppetDelay = BetterUI.DragFloat("Sync Delay*", BetterSleeves.syncInventoryPuppetDelay, 0.01, 0.01, 5, "%.2f")
+                    if ImGui.IsItemHovered() then
+                        ImGui.SetTooltip("*If too low, may stop sleeves from syncing when swapping clothes.");
+                    end
+                end
+
+                local photoModeSystem = Game.GetPhotoModeSystem()
+                if photoModeSystem:IsPhotoModeActive() then
+                    local playerSystem = Game.GetPlayerSystem()
+                    local photoPuppet = playerSystem:GetPhotoPuppet()
+
+                    ImGui.TextWrapped("Roll Sleeves in Photo Mode:")
+                    if BetterUI.FitButtonN(2, "Roll Down") then BetterSleeves:RollDownSleeves(true, {photoPuppet}); end
+                    ImGui.SameLine()
+                    if BetterUI.FitButtonN(1, "Roll Up") then BetterSleeves:RollUpSleeves(nil, {photoPuppet}); end
+                else
+                    ImGui.TextWrapped("Photo Mode is not active.")
+                end
+                ImGui.PopID()
+            end
         end
         ImGui.Separator()
 
