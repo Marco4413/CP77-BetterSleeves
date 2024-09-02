@@ -34,8 +34,8 @@ local BetterSleeves = {
     syncInventoryPuppetDelay = 1.0,
     showUI = false,
     scheduler = Scheduler.New(),
-    ---This is not 100% accurate, and is only used by the "Toggle Sleeves" feature.
-    rolledDown = false,
+    forceKeepRolledDown = false,
+    keepRolledDown = true,
     rollDownItemBlacklist = {},
     rollDownWeaponBlacklist = {},
     rollDownMissionBlacklist = {},
@@ -93,6 +93,8 @@ function BetterSleeves:ResetConfig()
     self.autoRollOnVehiclesTPP = false
     self.syncInventoryPuppet = true
     self.syncInventoryPuppetDelay = 1.0
+    self.forceKeepRolledDown = false
+    self.keepRolledDown = true
     self.rollDownItemBlacklist = {}
     self.rollDownWeaponBlacklist = {}
     self.rollDownMissionBlacklist = {}
@@ -133,6 +135,8 @@ function BetterSleeves:SaveConfig()
         autoRollOnVehiclesTPP = self.autoRollOnVehiclesTPP,
         syncInventoryPuppet = self.syncInventoryPuppet,
         syncInventoryPuppetDelay = self.syncInventoryPuppetDelay,
+        forceKeepRolledDown = self.forceKeepRolledDown,
+        keepRolledDown = self.keepRolledDown,
         rollDownItemBlacklist = self.rollDownItemBlacklist,
         rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
         rollDownMissionBlacklist = self.rollDownMissionBlacklist,
@@ -193,6 +197,10 @@ function BetterSleeves:LoadConfig()
             self.autoRoll = config.autoRoll
         end
 
+        if type(config.autoRollDelay) == "number" then
+            self.autoRollDelay = config.autoRollDelay
+        end
+
         if type(config.autoRollOnVehiclesTPP) == "boolean" then
             self.autoRollOnVehiclesTPP = config.autoRollOnVehiclesTPP
         end
@@ -205,8 +213,12 @@ function BetterSleeves:LoadConfig()
             self.syncInventoryPuppetDelay = config.syncInventoryPuppetDelay
         end
 
-        if type(config.autoRollDelay) == "number" then
-            self.autoRollDelay = config.autoRollDelay
+        if type(config.forceKeepRolledDown) == "boolean" then
+            self.forceKeepRolledDown = config.forceKeepRolledDown
+        end
+
+        if type(config.keepRolledDown) == "boolean" then
+            self.keepRolledDown = config.keepRolledDown
         end
 
         if type(config.rollDownItemBlacklist) == "table" then
@@ -435,8 +447,6 @@ end
 function BetterSleeves:RollDownSleeves(force, puppets)
     local player = Game.GetPlayer()
     if not player then return; end
-    
-    self.rolledDown = true
 
     local slots = self:GetActiveSlots(true)
     local puppets = puppets or self:GetActivePuppets()
@@ -485,7 +495,6 @@ function BetterSleeves:RollUpSleeves(all, puppets)
     if not player then return; end
 
     puppets = puppets or self:GetActivePuppets()
-    self.rolledDown = false
     for slotName, slot in next, self.slotsToRoll do
         if all or slot.enabled then
             self:RollUpSleevesForSlot(slotName, puppets)
@@ -494,12 +503,19 @@ function BetterSleeves:RollUpSleeves(all, puppets)
 end
 
 ---@param force boolean
-function BetterSleeves:ToggleSleeves(force)
-    if self.rolledDown then
-        self:RollUpSleeves()
-    else
+function BetterSleeves:SyncKeepState(force)
+    if self.keepRolledDown then
         self:RollDownSleeves(force)
+    else
+        self:RollUpSleeves()
     end
+end
+
+---@param force boolean
+function BetterSleeves:ToggleSleeves(force)
+    self.forceKeepRolledDown = (force == true)
+    self.keepRolledDown = not self.keepRolledDown
+    self:SyncKeepState(force)
 end
 
 local function AutoRollDownSleevesDelayedCB()
@@ -517,7 +533,7 @@ local function AutoRollDownSleevesDelayedCB()
         end
     end
 
-    BetterSleeves:RollDownSleeves()
+    BetterSleeves:SyncKeepState(BetterSleeves.forceKeepRolledDown)
 end
 
 local function SyncSleevesDelayedCB()
@@ -644,6 +660,25 @@ local function Event_OnDraw()
             if ImGui.IsItemHovered() then
                 ImGui.SetTooltip("*If too low, may stop sleeves from rolling down on TPP to FPP camera transitions.")
             end
+
+            ImGui.PushID("keep-state")
+            if ImGui.Button("Toggle") then
+                BetterSleeves:ToggleSleeves(BetterSleeves.forceKeepRolledDown)
+            end
+            ImGui.SameLine()
+            BetterSleeves.forceKeepRolledDown = ImGui.Checkbox("", BetterSleeves.forceKeepRolledDown)
+            ImGui.SameLine()
+            ImGui.TextWrapped(table.concat{
+                "Keep ",
+                BetterSleeves.forceKeepRolledDown and "Forcefully* " or "",
+                BetterSleeves.keepRolledDown and "Rolled Down" or "Rolled Up",
+            })
+            if BetterSleeves.forceKeepRolledDown and ImGui.IsItemHovered() then
+                ImGui.SetTooltip("*Ignores any user blacklist.")
+            end
+            ImGui.PopID()
+            ImGui.Separator()
+
             BetterSleeves.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", BetterSleeves.autoRollOnVehiclesTPP)
             if ImGui.IsItemHovered() then
                 ImGui.SetTooltip("*Can cause parts of clothes to disappear in TPP if sleeves are auto-rolled up.");
