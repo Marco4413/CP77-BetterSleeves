@@ -4,24 +4,26 @@
 
 ## About
 
-**This is a Cyberpunk 2077 mod which rolls down Sleeves.**
+**This Cyberpunk 2077 mod enables you to roll up and down sleeves through CET hotkeys and menus.**
 
-Are you tired of not being able to roll down your sleeves? Well, now you can!
+It's highly customizable thanks to blacklists and whitelists that can be managed in-game through CET.
+
+If you've got Codeware installed, this mod also syncs inventory sleeves and allows you to manually
+roll up/down sleeves in photo mode.
 
 There are currently 2 mods which already do what this mod does:
 - [Sleeves (DJ_Kovrik)](https://www.nexusmods.com/cyberpunk2077/mods/3309)
-  - This mod doesn't support Transmog, and a bug that was filed to the author (to report this issue) is currently marked as "Won't fix".
+  - This mod is highly integrated with the game, it adds new UI to change the state of sleeves.
+  However, it lacks hotkeys to do that without opening the inventory screen and some customizability
+  that this mod provides. Though if you prefer a more integrated experience, I recommend it.
 - [JB - Long Sleeves (Jelle Bakker)](https://www.nexusmods.com/cyberpunk2077/mods/987)
-  - This one actually works with Transmog, but doesn't have filters for weapons so clipping is a thing.
-
-Other than automatically rolling down your Sleeves (I wish this was a thing IRL), this mod adds some keybinds to do that manually.
-
-You can add filters through the mod's CET UI for weapons and items that you don't want to roll down sleeves for.
+  - This one is very old and supposedly not maintained anymore.
 
 ### Requirements
 
 - [CET 1.32.0+](https://github.com/yamashi/CyberEngineTweaks)
-- [RenderPlaneFix](https://github.com/Marco4413/CP77-RenderPlaneFix) (recommended, dynamically fixes draw order of clothing items)
+- [Codeware 1.10.0+](https://github.com/psiberx/cp2077-codeware) (recommended, allows for inventory screen sleeves sync)
+- [RenderPlaneFix](https://github.com/Marco4413/CP77-RenderPlaneFix) (recommended, dynamically fixes clothing items rendering)
 
 ### What version should I download?
 
