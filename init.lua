@@ -227,23 +227,23 @@ function BetterSleeves:LoadConfig()
     if not ok then self:SaveConfig(); end
 end
 
+---@param puppet gamePuppet
 ---@param item gameItemObject
 ---@return string|nil
-function BetterSleeves:GetItemAppearanceName(item)
-    local player = Game.GetPlayer()
-    if not player then return nil; end
+function BetterSleeves:GetItemAppearanceName(puppet, item)
+    if not puppet then return nil; end
     local tSys = Game.GetTransactionSystem()
-    local itemApp = tSys:GetItemAppearance(player, item:GetItemID())
+    local itemApp = tSys:GetItemAppearance(puppet, item:GetItemID())
     return itemApp and itemApp.value or nil
 end
 
+---@param puppet gamePuppet
 ---@param slot string
 ---@return gameItemObject|nil
-function BetterSleeves:GetItem(slot)
-    local player = Game.GetPlayer()
-    if not player then return nil; end
+function BetterSleeves:GetItem(puppet, slot)
+    if not puppet then return nil; end
     local tSys = Game.GetTransactionSystem()
-    local item = tSys:GetItemInSlot(player, slot)
+    local item = tSys:GetItemInSlot(puppet, slot)
     return item    
 end
 
@@ -278,14 +278,21 @@ function BetterSleeves:GetTrackedMissionAndObjectiveIds()
     return quest.id, obj.id
 end
 
+---@return gamePuppet[] puppets All puppets where sleeves need to be handled
+function BetterSleeves:GetActivePuppets()
+    local puppets = {Game.GetPlayer()}
+    return puppets
+end
+
+---@param puppet gamePuppet
 ---@param slot string
 ---@param fpp boolean
 ---@param itemBlacklist table
 ---@param weaponBlacklist table
 ---@param missionBlacklist table
 ---@return POVChangeResult
-function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, missionBlacklist)
-    local item = self:GetItem(slot)
+function BetterSleeves:ChangeItemPOV(puppet, slot, fpp, itemBlacklist, weaponBlacklist, missionBlacklist)
+    local item = self:GetItem(puppet, slot)
     if not item then return POVChangeResult.NoItem; end
 
     local itemRecord = TweakDB:GetRecord(item:GetItemID().id)
@@ -293,15 +300,13 @@ function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, 
         return POVChangeResult.NoCameraSuffix
     end
 
-    local itemName = self:GetItemAppearanceName(item)
+    local itemName = self:GetItemAppearanceName(puppet, item)
     -- itemBlacklist contains names without attributes
     if itemBlacklist and itemBlacklist[itemName:match("[^&]+")] then return POVChangeResult.ItemBlacklisted; end
 
     -- Don't need to nil-check because of valid item
-    local player = Game.GetPlayer()
-    local tSys = Game.GetTransactionSystem()
-    if weaponBlacklist then
-        local weapon = player:GetActiveWeapon()
+    if weaponBlacklist and puppet.GetActiveWeapon then
+        local weapon = puppet:GetActiveWeapon()
         if weapon then
             local weaponName = weapon:GetWeaponRecord():FriendlyName()
             if weaponBlacklist[weaponName] then return POVChangeResult.WeaponBlacklisted; end
@@ -318,20 +323,26 @@ function BetterSleeves:ChangeItemPOV(slot, fpp, itemBlacklist, weaponBlacklist, 
         end
     end
 
-    local newItemName, n;
+    local newItemName, hasItemChanged
     if fpp then
+        local n
         newItemName, n = itemName:gsub("&TPP", "&FPP")
+        hasItemChanged = hasItemChanged or n > 0
     else
+        local n
         newItemName, n = itemName:gsub("&FPP", "&TPP")
+        hasItemChanged = hasItemChanged or n > 0
     end
-    if n == 0 then return POVChangeResult.SamePOV; end
+    if not hasItemChanged then return POVChangeResult.SamePOV; end
 
-    tSys:ChangeItemAppearanceByName(player, item:GetItemID(), newItemName)
+    local tSys = Game.GetTransactionSystem()
+    tSys:ChangeItemAppearanceByName(puppet, item:GetItemID(), newItemName)
     return POVChangeResult.Changed
 end
 
 ---@param force boolean
-function BetterSleeves:RollDownSleeves(force)
+---@param puppets gamePuppet[]|nil
+function BetterSleeves:RollDownSleeves(force, puppets)
     local player = Game.GetPlayer()
     if not player then return; end
     
@@ -361,45 +372,56 @@ function BetterSleeves:RollDownSleeves(force)
         end
     end
 
+    local puppets = puppets or self:GetActivePuppets()
     if force then
         for _, slot in next, slots do
-            self:ChangeItemPOV(slot, false)
+            for _, puppet in next, puppets do
+                self:ChangeItemPOV(puppet, slot, false)
+            end
         end
     else
         local weaponBlacklist = self.rollDownWeaponBlacklist
         local missionBlacklist = self.rollDownMissionBlacklist
         for _, slot in next, slots do
-            local res = self:ChangeItemPOV(slot, false, self.rollDownItemBlacklist, weaponBlacklist, missionBlacklist)
-            if (res == POVChangeResult.Changed or
-                res == POVChangeResult.SamePOV) then
-                -- If res is in a "not blacklisted state" then weapon and mission blacklist don't have to be checked again.
-                weaponBlacklist = nil
-                missionBlacklist = nil
-            elseif (res == POVChangeResult.WeaponBlacklisted or
-                res == POVChangeResult.MissionBlacklisted) then
-                self:RollUpSleeves()
-                return
-            elseif res == POVChangeResult.ItemBlacklisted then
-                self:RollUpSleevesForSlot(slot)
+            for _, puppet in next, puppets do
+                local res = self:ChangeItemPOV(puppet, slot, false, self.rollDownItemBlacklist, weaponBlacklist, missionBlacklist)
+                if (res == POVChangeResult.Changed or
+                    res == POVChangeResult.SamePOV) then
+                    -- If res is in a "not blacklisted state" then weapon and mission blacklist don't have to be checked again.
+                    weaponBlacklist = nil
+                    missionBlacklist = nil
+                elseif (res == POVChangeResult.WeaponBlacklisted or
+                    res == POVChangeResult.MissionBlacklisted) then
+                    self:RollUpSleeves()
+                    return
+                elseif res == POVChangeResult.ItemBlacklisted then
+                    self:RollUpSleevesForSlot(slot, {puppet})
+                end
             end
         end
     end
 end
 
 ---@param slot string
-function BetterSleeves:RollUpSleevesForSlot(slot)
-    self:ChangeItemPOV(slot, true, { ["empty_appearance_default"] = true })
+---@param puppets gamePuppet[]|nil
+function BetterSleeves:RollUpSleevesForSlot(slot, puppets)
+    puppets = puppets or self:GetActivePuppets()
+    for _, puppet in next, puppets do
+        self:ChangeItemPOV(puppet, slot, true, { ["empty_appearance_default"] = true })
+    end
 end
 
 ---@param all boolean
-function BetterSleeves:RollUpSleeves(all)
+---@param puppets gamePuppet[]|nil
+function BetterSleeves:RollUpSleeves(all, puppets)
     local player = Game.GetPlayer()
     if not player then return; end
 
+    puppets = puppets or self:GetActivePuppets()
     self.rolledDown = false
     for slotName, slot in next, self.slotsToRoll do
         if all or slot.enabled then
-            self:RollUpSleevesForSlot(slotName)
+            self:RollUpSleevesForSlot(slotName, puppets)
         end
     end
 end
@@ -694,10 +716,11 @@ local function Event_OnDraw()
         if ImGui.CollapsingHeader("Quick Blacklist") then
             ImGui.TextWrapped("Within this section you can quickly blacklist equipped items, active weapons and quests.")
 
+            local player = Game.GetPlayer()
             for slot in next, BetterSleeves.slotsToRoll do
-                local item = BetterSleeves:GetItem(slot)
+                local item = BetterSleeves:GetItem(player, slot)
                 if item then
-                    local itemName = BetterSleeves:GetItemAppearanceName(item):match("[^&]+")
+                    local itemName = BetterSleeves:GetItemAppearanceName(player, item):match("[^&]+")
                     ImGui.PushID(table.concat{ "slot-qb_", slot })
                     if ImGui.Button("Blacklist") then
                         BetterSleeves.rollDownItemBlacklist[itemName] = true
@@ -708,7 +731,6 @@ local function Event_OnDraw()
                 end
             end
 
-            local player = Game.GetPlayer()
             if player then
                 local weapon = player:GetActiveWeapon()
                 if weapon then
