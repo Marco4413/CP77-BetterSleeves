@@ -516,7 +516,7 @@ function BetterSleeves:ToggleSleeves(force, rollDown)
     self:SyncKeepState()
 end
 
-local function AutoRollDownSleevesDelayedCB()
+local function AutoRollSleevesDelayedCB()
     if not BetterSleeves.autoRollOnVehiclesTPP then
         local player = Game.GetPlayer()
         if not player then return; end
@@ -549,9 +549,9 @@ end
 ---Creates a new "Delayed Roll Down Sleeves Event(tm)" if the current delay is less than the new one.
 ---@param delay number Seconds to wait before auto-rolling down sleeves.
 ---@return boolean ok Whether or not an Auto-Roll could be performed.
-function BetterSleeves:DoAutoRollDownSleevesDelayed(delay)
+function BetterSleeves:DoAutoRollSleevesDelayed(delay)
     if self.autoRoll then
-        self.scheduler:SetTask("auto-roll", AutoRollDownSleevesDelayedCB, delay)
+        self.scheduler:SetTask("auto-roll", AutoRollSleevesDelayedCB, delay)
         return true
     end
     return false
@@ -574,7 +574,7 @@ local function Event_SyncSleeves()
 end
 
 local function Event_UpdateSleeves()
-    BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.autoRollDelay)
+    BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.autoRollDelay)
     Event_SyncSleeves()
 end
 
@@ -595,7 +595,7 @@ local function Event_DoorControllerPS_OnActionDemolition()
     if armsCybName ~= BetterSleeves.gorillaArmsWeaponName then return; end
 
     BetterSleeves:RollUpSleeves()
-    BetterSleeves:DoAutoRollDownSleevesDelayed(BetterSleeves.gorillaArmsRollDownDelay)
+    BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.gorillaArmsRollDownDelay)
 end
 
 local function Event_OnInit()
