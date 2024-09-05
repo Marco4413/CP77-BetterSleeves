@@ -502,10 +502,9 @@ function BetterSleeves:RollUpSleeves(all, puppets)
     end
 end
 
----@param force boolean
-function BetterSleeves:SyncKeepState(force)
+function BetterSleeves:SyncKeepState()
     if self.keepRolledDown then
-        self:RollDownSleeves(force)
+        self:RollDownSleeves(self.forceKeepRolledDown)
     else
         self:RollUpSleeves()
     end
@@ -515,7 +514,7 @@ end
 function BetterSleeves:ToggleSleeves(force)
     self.forceKeepRolledDown = (force == true)
     self.keepRolledDown = not self.keepRolledDown
-    self:SyncKeepState(force)
+    self:SyncKeepState()
 end
 
 local function AutoRollDownSleevesDelayedCB()
@@ -533,7 +532,7 @@ local function AutoRollDownSleevesDelayedCB()
         end
     end
 
-    BetterSleeves:SyncKeepState(BetterSleeves.forceKeepRolledDown)
+    BetterSleeves:SyncKeepState()
 end
 
 local function SyncSleevesDelayedCB()
