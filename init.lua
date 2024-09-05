@@ -646,10 +646,10 @@ local function Event_OnDraw()
         ImGui.Text("Sleeves |")
         ImGui.SameLine()
 
-        if BetterUI.FitButtonN(2, "Roll Down") then BetterSleeves:RollDownSleeves(); end
+        if BetterUI.FitButtonN(2, "Roll Down") then BetterSleeves:ToggleSleeves(false, true); end
         ImGui.SameLine()
 
-        if BetterUI.FitButtonN(1, "Roll Up") then BetterSleeves:RollUpSleeves(); end
+        if BetterUI.FitButtonN(1, "Roll Up") then BetterSleeves:ToggleSleeves(false, false); end
         ImGui.Separator()
 
         BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
