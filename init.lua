@@ -703,6 +703,7 @@ local function Event_OnDraw()
 
             if isCodewareInstalled then
                 ImGui.PushID("codeware-integration")
+                ImGui.Separator()
                 BetterSleeves.syncInventoryPuppet = ImGui.Checkbox("Sync Inventory Character", BetterSleeves.syncInventoryPuppet)
 
                 if BetterSleeves.syncInventoryPuppet then
@@ -710,8 +711,12 @@ local function Event_OnDraw()
                     if ImGui.IsItemHovered() then
                         ImGui.SetTooltip("*If too low, may stop sleeves from syncing when swapping clothes.");
                     end
+                    if BetterUI.FitButtonN(1, "Perform Inventory Sync") then
+                        SyncSleevesDelayedCB() -- TODO: It's not optimal to call the callback method
+                    end
                 end
 
+                ImGui.Separator()
                 local photoModeSystem = Game.GetPhotoModeSystem()
                 if photoModeSystem:IsPhotoModeActive() then
                     local playerSystem = Game.GetPlayerSystem()
