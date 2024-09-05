@@ -406,7 +406,6 @@ function BetterSleeves:ChangeItemPOV(puppet, slot, fpp, itemBlacklist, weaponBla
     -- itemBlacklist contains names without attributes
     if itemBlacklist and itemBlacklist[itemName:match("[^&]+")] then return POVChangeResult.ItemBlacklisted; end
 
-    -- Don't need to nil-check because of valid item
     if weaponBlacklist and puppet.GetActiveWeapon then
         local weapon = puppet:GetActiveWeapon()
         if weapon then
@@ -445,9 +444,6 @@ end
 ---@param force boolean
 ---@param puppets gamePuppet[]|nil
 function BetterSleeves:RollDownSleeves(force, puppets)
-    local player = Game.GetPlayer()
-    if not player then return; end
-
     local slots = self:GetActiveSlots(true)
     local puppets = puppets or self:GetActivePuppets()
     if force then
