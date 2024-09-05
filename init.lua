@@ -712,7 +712,7 @@ local function Event_OnDraw()
                         ImGui.SetTooltip("*If too low, may stop sleeves from syncing when swapping clothes.");
                     end
                     if BetterUI.FitButtonN(1, "Perform Inventory Sync") then
-                        SyncSleevesDelayedCB() -- TODO: It's not optimal to call the callback method
+                        BetterSleeves:DoSyncSleevesDelayed(0)
                     end
                 end
 
