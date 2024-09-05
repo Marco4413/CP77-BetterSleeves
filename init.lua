@@ -615,7 +615,6 @@ local function Event_OnInit()
 
     Observe("PlayerPuppet", "OnWeaponEquipEvent", Event_UpdateSleeves)
     Observe("PlayerPuppet", "OnItemAddedToSlot", Event_UpdateSleeves)
-    -- Observe("PlayerPuppet", "OnItemRemovedFromSlot", Event_RollDownSleeves)
     Observe("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_UpdateSleeves)
     Observe("JournalManager", "OnQuestEntryTracked", Event_UpdateSleeves)
     Observe("JournalManager", "OnQuestEntryUntracked", Event_UpdateSleeves)
@@ -625,6 +624,9 @@ local function Event_OnInit()
 
     Observe("VehicleComponent", "OnVehicleCameraChange", Event_UpdateSleeves)
 
+    -- On menu open is only needed for the first time the menu is opened.
+    -- Event_UpdateSleeves will sync the inventory before the menu is even opened which makes inventory loading faster.
+    Observe("gameuiInventoryGameController", "OnInitialize", Event_SyncSleeves)
     Observe("gameuiInventoryGameController", "RefreshedEquippedItemData", Event_SyncSleeves)
     -- Observe("gameuiInventoryGameController", "RefreshEquippedWardrobeItems", Event_SyncSleeves)
     BetterSleeves.Log("Initialized!")
