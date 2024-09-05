@@ -974,11 +974,11 @@ function BetterSleeves:Init()
     registerInput("force_rollup_sleeves",   "Force Roll Up Sleeves",   _InputAsHotkey(function() self:ToggleSleeves(true, false) end))
     registerInput("force_toggle_sleeves",   "Force Toggle Sleeves",    _InputAsHotkey(function() self:ToggleSleeves(true)        end))
 
-    registerForEvent("onInit", Event_OnInit)
-    registerForEvent("onUpdate", Event_OnUpdate)
+    registerForEvent("onInit",     Event_OnInit)
+    registerForEvent("onUpdate",   Event_OnUpdate)
     registerForEvent("onShutdown", Event_OnShutdown)
-    registerForEvent("onDraw", Event_OnDraw)
-    registerForEvent("onOverlayOpen", Event_OnOverlayOpen)
+    registerForEvent("onDraw",         Event_OnDraw)
+    registerForEvent("onOverlayOpen",  Event_OnOverlayOpen)
     registerForEvent("onOverlayClose", Event_OnOverlayClose)
     return self
 end
