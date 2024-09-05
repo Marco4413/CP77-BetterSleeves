@@ -319,9 +319,11 @@ end
 function BetterSleeves:GetActiveSlots(checkWardrobe)
     checkWardrobe = checkWardrobe == nil and true or checkWardrobe
 
+    local wardrobeSystem = checkWardrobe  and Game.GetWardrobeSystem() or nil
+    local activeClothing = wardrobeSystem and wardrobeSystem:GetActiveClothingSet() or nil
+
     local slots = {}
-    local activeClothing = Game.GetWardrobeSystem():GetActiveClothingSet()
-    if checkWardrobe and activeClothing then
+    if activeClothing then
         local clothes = activeClothing.clothingList
         for i=1, #clothes do
             local item = TweakDB:GetRecord(clothes[i].visualItem.id)
