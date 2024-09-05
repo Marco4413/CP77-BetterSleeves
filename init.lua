@@ -511,9 +511,10 @@ function BetterSleeves:SyncKeepState()
 end
 
 ---@param force boolean
-function BetterSleeves:ToggleSleeves(force)
+---@param rollDown boolean|nil If nil, sleeves are toggled.
+function BetterSleeves:ToggleSleeves(force, rollDown)
     self.forceKeepRolledDown = (force == true)
-    self.keepRolledDown = not self.keepRolledDown
+    self.keepRolledDown = (rollDown == nil) and (not self.keepRolledDown) or (rollDown == true)
     self:SyncKeepState()
 end
 
