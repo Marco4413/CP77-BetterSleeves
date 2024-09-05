@@ -963,12 +963,18 @@ local function Event_OnOverlayClose()
 end
 
 function BetterSleeves:Init()
-    registerHotkey("rolldown_sleeves", "Roll Down Sleeves", function () self:RollDownSleeves(false) end)
-    registerHotkey("rollup_sleeves"  , "Roll Up Sleeves"  , function () self:RollUpSleeves()        end)
-    registerHotkey("toggle_sleeves"  , "Toggle Sleeves"   , function () self:ToggleSleeves(false)   end)
-    registerHotkey("force_rolldown_sleeves", "Force Roll Down Sleeves", function () self:RollDownSleeves(true) end)
-    registerHotkey("force_rollup_sleeves"  , "Force Roll Up Sleeves"  , function () self:RollUpSleeves()       end)
-    registerHotkey("force_toggle_sleeves"  , "Force Toggle Sleeves"   , function () self:ToggleSleeves(true)   end)
+    local function _InputAsHotkey(cb)
+        return function(pressed)
+            if not pressed then cb(); end
+        end
+    end
+
+    registerInput("rolldown_sleeves", "Roll Down Sleeves", _InputAsHotkey(function() self:ToggleSleeves(false, true)  end))
+    registerInput("rollup_sleeves",   "Roll Up Sleeves",   _InputAsHotkey(function() self:ToggleSleeves(false, false) end))
+    registerInput("toggle_sleeves",   "Toggle Sleeves",    _InputAsHotkey(function() self:ToggleSleeves(false)        end))
+    registerInput("force_rolldown_sleeves", "Force Roll Down Sleeves", _InputAsHotkey(function() self:ToggleSleeves(true, true)  end))
+    registerInput("force_rollup_sleeves",   "Force Roll Up Sleeves",   _InputAsHotkey(function() self:ToggleSleeves(true, false) end))
+    registerInput("force_toggle_sleeves",   "Force Toggle Sleeves",    _InputAsHotkey(function() self:ToggleSleeves(true)        end))
 
     registerForEvent("onInit", Event_OnInit)
     registerForEvent("onUpdate", Event_OnUpdate)
