@@ -594,7 +594,7 @@ local function Event_DoorControllerPS_OnActionDemolition()
     local armsCybName = TweakDB:GetRecord(armsCybId.id):FriendlyName()
     if armsCybName ~= BetterSleeves.gorillaArmsWeaponName then return; end
 
-    BetterSleeves:RollUpSleeves()
+    BetterSleeves:RollUpSleeves(false, { player })
     BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.gorillaArmsRollDownDelay)
 end
 
