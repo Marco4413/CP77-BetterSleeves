@@ -70,10 +70,10 @@ function Scheduler:Update(dt)
     for name, task in next, self._tasks do
         task.timer = task.timer - dt
         if task.timer <= 0 then
-            local ok = pcall(task.callback)
+            local ok, error = pcall(task.callback)
             self._tasks[name] = nil
             if not ok then
-                self._logger("There was an error while running task '" .. name .. "'.")
+                self._logger("There was an error while running task '" .. name .. "':\n" .. tostring(error))
             end
         end
     end
