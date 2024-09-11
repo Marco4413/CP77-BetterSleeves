@@ -55,7 +55,9 @@ local BetterSleeves = {
     appearanceSuffixCameraRecord = nil,
     gorillaArmsWeaponName = "w_strong_arms",
     gorillaArmsRollUpOnDoorOpen = true,
-    gorillaArmsRollDownDelay = 3.15
+    gorillaArmsRollDownDelay = 3.15,
+    _inventoryPuppet = nil,
+    _photoPuppet = nil,
 }
 
 function BetterSleeves.Log(...)
@@ -73,14 +75,6 @@ function BetterSleeves:DetectEquipmentExAndEnableSlots()
                 slot.userHandled = false
             end
         end
-        return true
-    end
-    return false
-end
-
-function BetterSleeves:DetectCodewareAndSetupHooks()
-    -- No Hooks?
-    if Codeware then
         return true
     end
     return false
@@ -348,12 +342,19 @@ function BetterSleeves:GetActiveSlots(checkWardrobe)
     return slots
 end
 
+function BetterSleeves:GetInventoryPuppet()
+    return self._inventoryPuppet
+end
+
+function BetterSleeves:GetPhotoPuppet()
+    return self._photoPuppet
+end
+
 ---@return gamePuppet[] puppets All puppets where sleeves need to be handled
 function BetterSleeves:GetActivePuppets()
     local puppets = {Game.GetPlayer()}
-    if Codeware and self.syncInventoryPuppet then
-        local playerSystem = Game.GetPlayerSystem()
-        table.insert(puppets, playerSystem:GetInventoryPuppet())
+    if self.syncInventoryPuppet then
+        table.insert(puppets, self:GetInventoryPuppet())
     end
     return puppets
 end
@@ -537,9 +538,10 @@ end
 local function SyncSleevesDelayedCB()
     local player = Game.GetPlayer()
     if not player then return; end
+    
+    local inventoryPuppet = BetterSleeves:GetInventoryPuppet()
+    if not inventoryPuppet then return; end
 
-    local playerSystem = Game.GetPlayerSystem()
-    local inventoryPuppet = playerSystem:GetInventoryPuppet()
     local slots = BetterSleeves:GetActiveSlots()
     for _, slotName in next, slots do
         BetterSleeves:SyncPuppetsPOV(player, inventoryPuppet, slotName)
@@ -562,7 +564,7 @@ end
 ---@return boolean ok Whether or not a sync could be performed.
 function BetterSleeves:DoSyncSleevesDelayed(delay)
     local isAutoRolling = BetterSleeves.scheduler:HasTask("auto-roll")
-    if Codeware and self.syncInventoryPuppet and not isAutoRolling then
+    if self.syncInventoryPuppet and not isAutoRolling then
         self.scheduler:SetTask("sync-sleeves", SyncSleevesDelayedCB, delay)
         return true
     end
@@ -599,7 +601,6 @@ local function Event_DoorControllerPS_OnActionDemolition()
 end
 
 local function Event_OnInit()
-    if Codeware then BetterSleeves.Log("Codeware found."); end
     if EquipmentEx then BetterSleeves.Log("EquipmentEx found."); end
     if GetMod("RenderPlaneFix") then BetterSleeves.Log("RenderPlaneFix found."); end
 
@@ -629,6 +630,20 @@ local function Event_OnInit()
     Observe("gameuiInventoryGameController", "OnInitialize", Event_SyncSleeves)
     Observe("gameuiInventoryGameController", "RefreshedEquippedItemData", Event_SyncSleeves)
     -- Observe("gameuiInventoryGameController", "RefreshEquippedWardrobeItems", Event_SyncSleeves)
+    
+    -- Thanks psiberx! https://github.com/psiberx/cp2077-codeware/blob/main/scripts/Player/PlayerSystem.reds
+    -- It's the same as what Codeware does.
+    local n_gameuiInventoryPuppetPreviewGameController = CName.new("gameuiInventoryPuppetPreviewGameController");
+    ObserveAfter("inkPuppetPreviewGameController", "OnPreviewInitialized", function(this)
+        if this:GetClassName() == n_gameuiInventoryPuppetPreviewGameController then
+            BetterSleeves._inventoryPuppet = this:GetGamePuppet()
+        end
+    end)
+
+    ObserveAfter("PhotoModePlayerEntityComponent", "SetupInventory", function(this)
+        BetterSleeves._photoPuppet = this.fakePuppet
+    end)
+
     BetterSleeves.Log("Initialized!")
 end
 
@@ -693,6 +708,38 @@ local function Event_OnDraw()
             ImGui.PopID()
         end
         ImGui.Separator()
+        ImGui.Separator()
+
+        do
+            ImGui.PushID("inventory_photo-mode")
+            BetterSleeves.syncInventoryPuppet = ImGui.Checkbox("Sync Inventory Character", BetterSleeves.syncInventoryPuppet)
+
+            if BetterSleeves.syncInventoryPuppet then
+                BetterSleeves.syncInventoryPuppetDelay = BetterUI.DragFloat("Sync Delay*", BetterSleeves.syncInventoryPuppetDelay, 0.01, 0.01, 5, "%.2f")
+                if ImGui.IsItemHovered() then
+                    ImGui.SetTooltip("*If too low, may stop sleeves from syncing when swapping clothes.");
+                end
+                if BetterUI.FitButtonN(1, "Perform Inventory Sync") then
+                    BetterSleeves:DoSyncSleevesDelayed(0)
+                end
+            end
+
+            ImGui.Separator()
+            local photoModeSystem = Game.GetPhotoModeSystem()
+            local photoPuppet = BetterSleeves:GetPhotoPuppet()
+
+            if photoModeSystem:IsPhotoModeActive() and photoPuppet then
+                ImGui.TextWrapped("Photo Mode Sleeves |")
+                ImGui.SameLine()
+                if BetterUI.FitButtonN(2, "Roll Down") then BetterSleeves:RollDownSleeves(true, {photoPuppet}); end
+                ImGui.SameLine()
+                if BetterUI.FitButtonN(1, "Roll Up") then BetterSleeves:RollUpSleeves(nil, {photoPuppet}); end
+            else
+                ImGui.TextWrapped("Photo Mode Sleeves | Currently not in Photo Mode.")
+            end
+            ImGui.PopID()
+        end
+        ImGui.Separator()
 
         if ImGui.CollapsingHeader("Integrations") then
             ImGui.TextWrapped("Everything in this menu is available through integrations with other mods.")
@@ -702,38 +749,6 @@ local function Event_OnDraw()
             ImGui.TextWrapped(table.concat{
                 "Codeware: ", isCodewareInstalled and "Installed" or "Not Installed"
             })
-
-            if isCodewareInstalled then
-                ImGui.PushID("codeware-integration")
-                ImGui.Separator()
-                BetterSleeves.syncInventoryPuppet = ImGui.Checkbox("Sync Inventory Character", BetterSleeves.syncInventoryPuppet)
-
-                if BetterSleeves.syncInventoryPuppet then
-                    BetterSleeves.syncInventoryPuppetDelay = BetterUI.DragFloat("Sync Delay*", BetterSleeves.syncInventoryPuppetDelay, 0.01, 0.01, 5, "%.2f")
-                    if ImGui.IsItemHovered() then
-                        ImGui.SetTooltip("*If too low, may stop sleeves from syncing when swapping clothes.");
-                    end
-                    if BetterUI.FitButtonN(1, "Perform Inventory Sync") then
-                        BetterSleeves:DoSyncSleevesDelayed(0)
-                    end
-                end
-
-                ImGui.Separator()
-                local photoModeSystem = Game.GetPhotoModeSystem()
-                if photoModeSystem:IsPhotoModeActive() then
-                    local playerSystem = Game.GetPlayerSystem()
-                    local photoPuppet = playerSystem:GetPhotoPuppet()
-
-                    ImGui.TextWrapped("Photo Mode Sleeves |")
-                    ImGui.SameLine()
-                    if BetterUI.FitButtonN(2, "Roll Down") then BetterSleeves:RollDownSleeves(true, {photoPuppet}); end
-                    ImGui.SameLine()
-                    if BetterUI.FitButtonN(1, "Roll Up") then BetterSleeves:RollUpSleeves(nil, {photoPuppet}); end
-                else
-                    ImGui.TextWrapped("Photo Mode Sleeves | Currently not in Photo Mode.")
-                end
-                ImGui.PopID()
-            end
 
             ImGui.Separator()
             ImGui.TextWrapped(table.concat{
