@@ -8,8 +8,7 @@
 
 It's highly customizable thanks to blacklists and whitelists that can be managed in-game through CET.
 
-If you've got Codeware installed, this mod also syncs inventory sleeves and allows you to manually
-roll up/down sleeves in photo mode.
+This mod also syncs inventory sleeves and allows you to manually roll up/down sleeves in photo mode.
 
 There are currently 2 mods which already do what this mod does:
 - [Sleeves (DJ_Kovrik)](https://www.nexusmods.com/cyberpunk2077/mods/3309)
