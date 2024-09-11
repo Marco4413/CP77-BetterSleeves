@@ -22,7 +22,6 @@ There are currently 2 mods which already do what this mod does:
 ### Requirements
 
 - [CET 1.32.0+](https://github.com/yamashi/CyberEngineTweaks)
-- [Codeware 1.10.0+](https://github.com/psiberx/cp2077-codeware) (recommended, allows for inventory screen sleeves sync)
 - [RenderPlaneFix](https://github.com/Marco4413/CP77-RenderPlaneFix) (recommended, dynamically fixes clothing items rendering)
 
 ### What version should I download?
@@ -31,6 +30,11 @@ There are currently 3 separate files:
 1. **BetterSleeves**: The main mod which includes the **logic for rolling down sleeves and fixes to some clothing items**.
 2. **BetterSleeves - CET Only**: This version has no fixes to clothing but contains the **logic to roll down sleeves**.
 3. **BetterSleeves - Archive Fixes**: This is marked as "Optional" and contains **only the fixes to clothing items**. It can be used with other Sleeves mods!
+
+### Credits
+
+Thanks to **psiberx** for making [Codeware](https://github.com/psiberx/cp2077-codeware/)
+from which I've ***"stolen"*** the code to get inventory and photo mode player puppets!
 
 ### Mod Compatibility
 
