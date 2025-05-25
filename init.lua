@@ -1,5 +1,5 @@
 --[[
-Copyright (c) 2024 [Marco4413](https://github.com/Marco4413/CP77-BetterSleeves)
+Copyright (c) 2025 [Marco4413](https://github.com/Marco4413/CP77-BetterSleeves)
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
