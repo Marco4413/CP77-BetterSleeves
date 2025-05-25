@@ -52,6 +52,8 @@ local BetterSleeves = {
     slotToAreaType = {},
     _configInitialized = false,
     -- Populated within Event_OnInit
+
+    ---Deprecated: See BetterSleeves:HasCameraAppearanceSuffix()
     appearanceSuffixCameraRecord = nil,
     gorillaArmsWeaponName = "w_strong_arms",
     gorillaArmsRollUpOnDoorOpen = true,
@@ -389,6 +391,11 @@ function BetterSleeves:SyncPuppetsPOV(puppetSrc, puppetDst, slot)
     return hasChanged
 end
 
+---@param appName string
+function BetterSleeves:HasCameraAppearanceSuffix(appName)
+    return appName:find("&[FT]PP") and true or false
+end
+
 ---@param puppet gamePuppet
 ---@param slot string
 ---@param fpp boolean
@@ -400,12 +407,17 @@ function BetterSleeves:ChangeItemPOV(puppet, slot, fpp, itemBlacklist, weaponBla
     local item = self:GetItem(puppet, slot)
     if not item then return POVChangeResult.NoItem; end
 
-    local itemRecord = TweakDB:GetRecord(item:GetItemID().id)
-    if not itemRecord:AppearanceSuffixesContains(self.appearanceSuffixCameraRecord) then
+    -- Removed because some items returned false even though they have a Camera Suffix
+    -- local itemRecord = TweakDB:GetRecord(item:GetItemID().id)
+    -- if not itemRecord:AppearanceSuffixesContains(self.appearanceSuffixCameraRecord) then
+    --     return POVChangeResult.NoCameraSuffix
+    -- end
+
+    local itemName = self:GetItemAppearanceName(puppet, item)
+    if not self:HasCameraAppearanceSuffix(itemName) then
         return POVChangeResult.NoCameraSuffix
     end
 
-    local itemName = self:GetItemAppearanceName(puppet, item)
     -- itemBlacklist contains names without attributes
     if itemBlacklist and itemBlacklist[itemName:match("[^&]+")] then return POVChangeResult.ItemBlacklisted; end
 
