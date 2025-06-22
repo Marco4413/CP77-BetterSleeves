@@ -25,23 +25,27 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 local BetterUI = { }
 
-function BetterUI.ButtonAdd()
+---@param char string A string containing a single char or a small sequence of chars.
+---@return boolean pressed Whether the button was pressed or not.
+function BetterUI.SquareButton(char)
     local lineHeight = ImGui.GetTextLineHeightWithSpacing()
     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0.0)
-    ImGui.PushStyleColor(ImGuiCol.Text, .1, .9, 0, 1)
-    local res = ImGui.Button("+", lineHeight, lineHeight)
-    ImGui.PopStyleColor()
+    local res = ImGui.Button(char, lineHeight, lineHeight)
     ImGui.PopStyleVar()
     return res
 end
 
-function BetterUI.ButtonRemove()
-    local lineHeight = ImGui.GetTextLineHeightWithSpacing()
-    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0.0)
-    ImGui.PushStyleColor(ImGuiCol.Text, .9, .1, 0, 1)
-    local res = ImGui.Button("-", lineHeight, lineHeight)
+function BetterUI.ButtonAdd()
+    ImGui.PushStyleColor(ImGuiCol.Text, .1, .9, 0, 1)
+    local res = BetterUI.SquareButton("+")
     ImGui.PopStyleColor()
-    ImGui.PopStyleVar()
+    return res
+end
+
+function BetterUI.ButtonRemove()
+    ImGui.PushStyleColor(ImGuiCol.Text, .9, .1, 0, 1)
+    local res = BetterUI.SquareButton("-")
+    ImGui.PopStyleColor()
     return res
 end
 
