@@ -927,8 +927,16 @@ local function Event_OnDraw()
                 if item then
                     local itemName = BetterSleeves:GetItemAppearanceName(player, item):match("[^&]+")
                     ImGui.PushID(table.concat{ "slot-qb_", slot })
-                    if ImGui.Button("Blacklist") then
+                    if BetterUI.ButtonAdd() then
                         BetterSleeves.rollDownItemBlacklist[itemName] = true
+                    end
+                    ImGui.SameLine()
+                    if BetterSleeves.rollDownItemBlacklist[itemName] then
+                        if BetterUI.ButtonRemove() then
+                            BetterSleeves.rollDownItemBlacklist[itemName] = nil
+                        end
+                    else
+                        BetterUI.SquareButton("/")
                     end
                     ImGui.SameLine()
                     ImGui.Text(table.concat { slot:match("%.(.+)"), " Item: ", itemName })
@@ -941,8 +949,16 @@ local function Event_OnDraw()
                 if weapon then
                     local weaponName = weapon:GetWeaponRecord():FriendlyName()
                     ImGui.PushID("weapon-qb")
-                    if ImGui.Button("Blacklist") then
+                    if BetterUI.ButtonAdd() then
                         BetterSleeves.rollDownWeaponBlacklist[weaponName] = true
+                    end
+                    ImGui.SameLine()
+                    if BetterSleeves.rollDownWeaponBlacklist[weaponName] then
+                        if BetterUI.ButtonRemove() then
+                            BetterSleeves.rollDownWeaponBlacklist[weaponName] = nil
+                        end
+                    else
+                        BetterUI.SquareButton("/")
                     end
                     ImGui.SameLine()
                     ImGui.Text("Weapon Name: " .. weaponName)
@@ -953,16 +969,34 @@ local function Event_OnDraw()
             local quest, obj = BetterSleeves:GetTrackedMissionAndObjectiveIds()
             if quest then
                 ImGui.PushID("quest-qb")
-                if ImGui.Button("Blacklist") then
-                    BetterSleeves.rollDownMissionBlacklist[table.concat{quest, ".*"}] = true
+                local blacklistQuestAll = table.concat{quest, ".*"}
+                if BetterUI.ButtonAdd() then
+                    BetterSleeves.rollDownMissionBlacklist[blacklistQuestAll] = true
+                end
+                ImGui.SameLine()
+                if BetterSleeves.rollDownMissionBlacklist[blacklistQuestAll] then
+                    if BetterUI.ButtonRemove() then
+                        BetterSleeves.rollDownMissionBlacklist[blacklistQuestAll] = nil
+                    end
+                else
+                    BetterUI.SquareButton("/")
                 end
                 ImGui.SameLine()
                 ImGui.Text("Quest ID: " .. quest)
                 ImGui.PopID()
 
                 ImGui.PushID("objective-qb")
-                if ImGui.Button("Blacklist") then
-                    BetterSleeves.rollDownMissionBlacklist[table.concat{quest, ".", obj}] = true
+                local blacklistQuestSpecific = table.concat{quest, ".", obj}
+                if BetterUI.ButtonAdd() then
+                    BetterSleeves.rollDownMissionBlacklist[blacklistQuestSpecific] = true
+                end
+                ImGui.SameLine()
+                if BetterSleeves.rollDownMissionBlacklist[blacklistQuestSpecific] then
+                    if BetterUI.ButtonRemove() then
+                        BetterSleeves.rollDownMissionBlacklist[blacklistQuestSpecific] = nil
+                    end
+                else
+                    BetterUI.SquareButton("/")
                 end
                 ImGui.SameLine()
                 ImGui.Text("Objective ID: " .. obj)
