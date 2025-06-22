@@ -285,8 +285,11 @@ local POVChangeResult = {
     NoItem = 1,
     NoCameraSuffix = 2,
     SamePOV = 3,
+    ---@deprecated
     ItemBlacklisted = 4,
+    ---@deprecated
     WeaponBlacklisted = 5,
+    ---@deprecated
     MissionBlacklisted = 6,
 }
 
@@ -396,6 +399,8 @@ function BetterSleeves:HasCameraAppearanceSuffix(appName)
     return appName:find("&[FT]PP") and true or false
 end
 
+---Deprecated: Use :ChangeItemPOVForSlot() instead.
+---@deprecated
 ---@param puppet gamePuppet
 ---@param slot string
 ---@param fpp boolean
@@ -404,6 +409,7 @@ end
 ---@param missionBlacklist table
 ---@return POVChangeResult
 function BetterSleeves:ChangeItemPOV(puppet, slot, fpp, itemBlacklist, weaponBlacklist, missionBlacklist)
+    self:Log("Usage of deprecated function :ChangeItemPOV(), please use :ChangeItemPOVForSlot() instead.")
     local item = self:GetItem(puppet, slot)
     if not item then return POVChangeResult.NoItem; end
 
@@ -456,34 +462,133 @@ function BetterSleeves:ChangeItemPOV(puppet, slot, fpp, itemBlacklist, weaponBla
     return POVChangeResult.Changed
 end
 
+---@param missionBlacklist table
+---@return boolean
+function BetterSleeves:IsMissionBlacklisted(missionBlacklist)
+    local quest, obj = self:GetTrackedMissionAndObjectiveIds()
+    if quest and (
+        missionBlacklist[table.concat{quest, ".*"}] or
+        missionBlacklist[table.concat{quest, ".", obj}]
+    ) then
+        return true
+    end
+
+    return false
+end
+
+---@param puppet gamePuppet
+---@param weaponBlacklist table
+---@return boolean
+function BetterSleeves:IsWeaponBlacklisted(puppet, weaponBlacklist)
+    local weapon = puppet:GetActiveWeapon()
+    if weapon then
+        local weaponName = weapon:GetWeaponRecord():FriendlyName()
+        if weaponBlacklist[weaponName] then
+            return true
+        end
+    end
+
+    return false
+end
+
+---@param puppet gamePuppet
+---@param slot string
+---@param itemBlacklist table
+---@return boolean
+function BetterSleeves:IsItemInSlotBlacklisted(puppet, slot, itemBlacklist)
+    if not itemBlacklist then return false; end
+
+    local item = self:GetItem(puppet, slot)
+    if not item then return false; end
+
+    local itemName = self:GetItemAppearanceName(puppet, item)
+    -- itemBlacklist contains names without attributes
+    if itemBlacklist[itemName:match("[^&]+")] then
+        return true
+    end
+
+    return false
+end
+
+---@param puppet gamePuppet
+---@param slot string
+---@param fpp boolean
+---@return POVChangeResult
+function BetterSleeves:ChangeItemPOVForSlot(puppet, slot, fpp)
+    local item = self:GetItem(puppet, slot)
+    if not item then return POVChangeResult.NoItem; end
+
+    -- Removed because some items returned false even though they have a Camera Suffix
+    -- local itemRecord = TweakDB:GetRecord(item:GetItemID().id)
+    -- if not itemRecord:AppearanceSuffixesContains(self.appearanceSuffixCameraRecord) then
+    --     return POVChangeResult.NoCameraSuffix
+    -- end
+
+    local itemName = self:GetItemAppearanceName(puppet, item)
+    if not self:HasCameraAppearanceSuffix(itemName) then
+        return POVChangeResult.NoCameraSuffix
+    end
+
+    local newItemName, hasItemChanged
+    if fpp then
+        local n
+        newItemName, n = itemName:gsub("&TPP", "&FPP")
+        hasItemChanged = hasItemChanged or n > 0
+    else
+        local n
+        newItemName, n = itemName:gsub("&FPP", "&TPP")
+        hasItemChanged = hasItemChanged or n > 0
+    end
+    if not hasItemChanged then return POVChangeResult.SamePOV; end
+
+    local tSys = Game.GetTransactionSystem()
+    tSys:ChangeItemAppearanceByName(puppet, item:GetItemID(), newItemName)
+    return POVChangeResult.Changed
+end
+
 ---@param force boolean
 ---@param puppets gamePuppet[]|nil
 function BetterSleeves:RollDownSleeves(force, puppets)
     local slots = self:GetActiveSlots(true)
     local puppets = puppets or self:GetActivePuppets()
     if force then
-        for _, slot in next, slots do
-            for _, puppet in next, puppets do
-                self:ChangeItemPOV(puppet, slot, false)
+        for _, puppet in next, puppets do
+            for _, slot in next, slots do
+                self:ChangeItemPOVForSlot(puppet, slot, false)
             end
         end
     else
-        local weaponBlacklist = self.rollDownWeaponBlacklist
         local missionBlacklist = self.rollDownMissionBlacklist
-        for _, slot in next, slots do
+        local weaponBlacklist = self.rollDownWeaponBlacklist
+        local itemBlacklist = self.rollDownItemBlacklist
+
+        if self:IsMissionBlacklisted(missionBlacklist) then
+            self:RollUpSleeves(false, puppets)
+        else
             for _, puppet in next, puppets do
-                local res = self:ChangeItemPOV(puppet, slot, false, self.rollDownItemBlacklist, weaponBlacklist, missionBlacklist)
-                if (res == POVChangeResult.Changed or
-                    res == POVChangeResult.SamePOV) then
-                    -- If res is in a "not blacklisted state" then weapon and mission blacklist don't have to be checked again.
-                    weaponBlacklist = nil
-                    missionBlacklist = nil
-                elseif (res == POVChangeResult.WeaponBlacklisted or
-                    res == POVChangeResult.MissionBlacklisted) then
-                    self:RollUpSleeves()
-                    return
-                elseif res == POVChangeResult.ItemBlacklisted then
-                    self:RollUpSleevesForSlot(slot, {puppet})
+                if self:IsWeaponBlacklisted(puppet, weaponBlacklist) then
+                    self:RollUpSleeves(false, {puppet})
+                else
+                    local isItemInSlotBlacklisted = {}
+                    local areAllItemsBlacklisted  = true
+
+                    for i, slot in next, slots do
+                        table.insert(isItemInSlotBlacklisted, self:IsItemInSlotBlacklisted(puppet, slot, itemBlacklist))
+                        if isItemInSlotBlacklisted[i] then
+                            self:RollUpSleevesForSlot(slot, {puppet})
+                        else
+                            areAllBlacklisted = false
+                        end
+                    end
+
+                    -- TODO: Figure out if swapping all items to TPP at the end fixes a reported issue.
+                    if not areAllBlacklisted then
+                        for i, slot in next, slots do
+                            if not isItemInSlotBlacklisted[i] then
+                                self:ChangeItemPOVForSlot(puppet, slot, false)
+                            end
+                        end
+                    end
                 end
             end
         end
@@ -493,9 +598,12 @@ end
 ---@param slot string
 ---@param puppets gamePuppet[]|nil
 function BetterSleeves:RollUpSleevesForSlot(slot, puppets)
+    -- TODO: Deprecate this function?
     puppets = puppets or self:GetActivePuppets()
     for _, puppet in next, puppets do
-        self:ChangeItemPOV(puppet, slot, true, { ["empty_appearance_default"] = true })
+        if not self:IsItemInSlotBlacklisted(puppet, slot, { ["empty_appearance_default"] = true }) then
+            self:ChangeItemPOVForSlot(puppet, slot, true)
+        end
     end
 end
 
@@ -507,6 +615,8 @@ function BetterSleeves:RollUpSleeves(all, puppets)
 
     puppets = puppets or self:GetActivePuppets()
     for slotName, slot in next, self.slotsToRoll do
+        -- TODO: Figure out why :GetActiveSlots() was not used here.
+        --       Probably there was some bug that only happened when rolling down.
         if all or slot.enabled then
             self:RollUpSleevesForSlot(slotName, puppets)
         end
