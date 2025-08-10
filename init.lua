@@ -30,6 +30,7 @@ local BetterSleeves = {
     autoRoll = true,
     autoRollDelay = 1.0,
     autoRollOnVehiclesTPP = false,
+    autoRollVehiclesDelay = 1.0,
     syncInventoryPuppet = true,
     syncInventoryPuppetDelay = 1.0,
     showUI = false,
@@ -87,6 +88,7 @@ function BetterSleeves:ResetConfig()
     self.autoRoll = true
     self.autoRollDelay = 1.0
     self.autoRollOnVehiclesTPP = false
+    self.autoRollVehiclesDelay = 1.0
     self.syncInventoryPuppet = true
     self.syncInventoryPuppetDelay = 1.0
     self.forceKeepRolledDown = false
@@ -125,10 +127,11 @@ function BetterSleeves:SaveConfig()
     end
 
     file:write(json.encode({
-        version = 4,
+        version = 5,
         autoRoll = self.autoRoll,
         autoRollDelay = self.autoRollDelay,
         autoRollOnVehiclesTPP = self.autoRollOnVehiclesTPP,
+        autoRollVehiclesDelay = self.autoRollVehiclesDelay,
         syncInventoryPuppet = self.syncInventoryPuppet,
         syncInventoryPuppetDelay = self.syncInventoryPuppetDelay,
         forceKeepRolledDown = self.forceKeepRolledDown,
@@ -177,6 +180,11 @@ function BetterSleeves:MigrateConfigFromVersion(version)
         end
     end
 
+    if version <= 4 then
+        version = 5
+        self.autoRollVehiclesDelay = self.autoRollDelay
+    end
+
     -- Migrate from version x to latest
 end
 
@@ -199,6 +207,10 @@ function BetterSleeves:LoadConfig()
 
         if type(config.autoRollOnVehiclesTPP) == "boolean" then
             self.autoRollOnVehiclesTPP = config.autoRollOnVehiclesTPP
+        end
+
+        if type(config.autoRollVehiclesDelay) == "number" then
+            self.autoRollVehiclesDelay = config.autoRollVehiclesDelay
         end
 
         if type(config.syncInventoryPuppet) == "boolean" then
@@ -722,6 +734,11 @@ local function Event_DoorControllerPS_OnActionDemolition()
     BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.gorillaArmsRollDownDelay)
 end
 
+local function Event_VehicleComponent_OnVehicleCameraChange()
+    BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.autoRollVehiclesDelay)
+    Event_SyncSleeves()
+end
+
 local function Event_OnInit()
     if EquipmentEx then BetterSleeves.Log("EquipmentEx found."); end
     if GetMod("RenderPlaneFix") then BetterSleeves.Log("RenderPlaneFix found."); end
@@ -737,7 +754,12 @@ local function Event_OnInit()
     BetterSleeves.slotToAreaType["AttachmentSlots.Chest"] = gamedataEquipmentArea.InnerChest
 
     Observe("PlayerPuppet", "OnWeaponEquipEvent", Event_UpdateSleeves)
-    Observe("PlayerPuppet", "OnItemAddedToSlot", Event_UpdateSleeves)
+    -- This also triggers when switching from TPP to FPP on vehicles (and vice-versa).
+    -- I don't know if it was also triggered in other contexts which made the mod work.
+    -- TODO: Figure out if not listening to this event breaks the mod
+    -- Observe("PlayerPuppet", "OnItemAddedToSlot", Event_UpdateSleeves)
+    Observe("PlayerPuppet", "OnItemEquipped", Event_UpdateSleeves)
+    -- Observe("PlayerPuppet", "OnItemUnequipped", Event_UpdateSleeves)
     Observe("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_UpdateSleeves)
     Observe("JournalManager", "OnQuestEntryTracked", Event_UpdateSleeves)
     Observe("JournalManager", "OnQuestEntryUntracked", Event_UpdateSleeves)
@@ -745,7 +767,7 @@ local function Event_OnInit()
 
     Observe("DoorControllerPS", "OnActionDemolition", Event_DoorControllerPS_OnActionDemolition)
 
-    Observe("VehicleComponent", "OnVehicleCameraChange", Event_UpdateSleeves)
+    Observe("VehicleComponent", "OnVehicleCameraChange", Event_VehicleComponent_OnVehicleCameraChange)
 
     -- On menu open is only needed for the first time the menu is opened.
     -- Event_UpdateSleeves will sync the inventory before the menu is even opened which makes inventory loading faster.
@@ -795,7 +817,7 @@ local function Event_OnDraw()
         if BetterSleeves.autoRoll then
             BetterSleeves.autoRollDelay = BetterUI.DragFloat("Roll Delay*", BetterSleeves.autoRollDelay, 0.01, 0.01, 5, "%.2f")
             if ImGui.IsItemHovered() then
-                ImGui.SetTooltip("*If too low, may stop sleeves from rolling down on TPP to FPP camera transitions.")
+                ImGui.SetTooltip("*If too low, may stop sleeves from rolling down when changing clothes.")
             end
 
             ImGui.PushID("keep-state")
@@ -819,6 +841,10 @@ local function Event_OnDraw()
             BetterSleeves.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", BetterSleeves.autoRollOnVehiclesTPP)
             if ImGui.IsItemHovered() then
                 ImGui.SetTooltip("*Can cause parts of clothes to disappear in TPP if sleeves are auto-rolled up.");
+            end
+            BetterSleeves.autoRollVehiclesDelay = BetterUI.DragFloat("Vehicles Roll Delay*", BetterSleeves.autoRollVehiclesDelay, 0.01, 0.01, 5, "%.2f")
+            if ImGui.IsItemHovered() then
+                ImGui.SetTooltip("*If too low, may stop sleeves from rolling down on TPP to FPP camera transitions.")
             end
             ImGui.Separator()
 
