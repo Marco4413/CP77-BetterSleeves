@@ -759,7 +759,7 @@ local function Event_OnInit()
     -- TODO: Figure out if not listening to this event breaks the mod
     -- Observe("PlayerPuppet", "OnItemAddedToSlot", Event_UpdateSleeves)
     Observe("PlayerPuppet", "OnItemEquipped", Event_UpdateSleeves)
-    -- Observe("PlayerPuppet", "OnItemUnequipped", Event_UpdateSleeves)
+    Observe("PlayerPuppet", "OnItemUnequipped", Event_UpdateSleeves)
     Observe("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_UpdateSleeves)
     Observe("JournalManager", "OnQuestEntryTracked", Event_UpdateSleeves)
     Observe("JournalManager", "OnQuestEntryUntracked", Event_UpdateSleeves)
