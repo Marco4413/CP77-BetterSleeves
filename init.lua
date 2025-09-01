@@ -383,11 +383,11 @@ function BetterSleeves:SyncPuppetsPOV(puppetSrc, puppetDst, slot)
     if not itemDst then return false; end
 
     local appSrcName = self:GetItemAppearanceName(puppetSrc, itemSrc)
-    if not appSrcName then self:Log("Failed to retrieve appearance name for source."); return false; end
+    if not appSrcName then self.Log("Failed to retrieve appearance name for source."); return false; end
     local isAppSrcTpp = appSrcName:find("&TPP", 1, true)
     
     local appDstName = self:GetItemAppearanceName(puppetDst, itemDst)
-    if not appDstName then self:Log("Failed to retrieve appearance name for destination."); return false; end
+    if not appDstName then self.Log("Failed to retrieve appearance name for destination."); return false; end
 
     local hasChanged = false
     if isAppSrcTpp then
@@ -421,7 +421,7 @@ end
 ---@param missionBlacklist table
 ---@return POVChangeResult
 function BetterSleeves:ChangeItemPOV(puppet, slot, fpp, itemBlacklist, weaponBlacklist, missionBlacklist)
-    self:Log("Usage of deprecated function :ChangeItemPOV(), please use :ChangeItemPOVForSlot() instead.")
+    self.Log("Usage of deprecated function :ChangeItemPOV(), please use :ChangeItemPOVForSlot() instead.")
     local item = self:GetItem(puppet, slot)
     if not item then return POVChangeResult.NoItem; end
 
