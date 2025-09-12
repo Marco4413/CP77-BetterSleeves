@@ -1055,7 +1055,14 @@ local function Event_OnDraw()
         end
 
         if ImGui.CollapsingHeader("Quick Blacklist") then
-            ImGui.TextWrapped("Within this section you can quickly blacklist equipped items, active weapons and quests.")
+            ImGui.TextWrapped(table.concat{
+                "Within this section you can quickly blacklist equipped items, active weapons and quests.",
+                " Use the button below to test a change made in the blacklist."
+            })
+
+            if BetterUI.FitButtonN(1, "Sync Sleeves") then
+                BetterSleeves:SyncKeepState()
+            end
 
             local player = Game.GetPlayer()
             for slot in next, BetterSleeves.slotsToRoll do
