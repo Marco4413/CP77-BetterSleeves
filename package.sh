@@ -28,8 +28,8 @@ cd "$BASE"
 ARTIFACT_DIR="$WORKING_DIR/artifact"
 mkdir -p "$ARTIFACT_DIR"
 
-zip -r "$ARTIFACT_DIR/BetterSleeves-$MOD_VERSION.zip" archive bin
-zip -r "$ARTIFACT_DIR/BetterSleeves_CET_Only-$MOD_VERSION.zip" bin
-zip -r "$ARTIFACT_DIR/BetterSleeves_ArchiveFixes-$ARCHIVE_VERSION.zip" archive
+zip -9 -r "$ARTIFACT_DIR/BetterSleeves-$MOD_VERSION.zip" archive bin
+zip -9 -r "$ARTIFACT_DIR/BetterSleeves_CET_Only-$MOD_VERSION.zip" bin
+zip -9 -r "$ARTIFACT_DIR/BetterSleeves_ArchiveFixes-$ARCHIVE_VERSION.zip" archive
 
 cd "$WORKING_DIR"
