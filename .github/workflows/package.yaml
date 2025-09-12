@@ -1,0 +1,26 @@
+name: Package
+
+on:
+  push:
+    tags:
+      - v*
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Prepare Artifact
+        run: ./package.sh
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: artifact
+          if-no-files-found: error
