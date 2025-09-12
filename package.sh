@@ -2,7 +2,7 @@
 
 set -xe
 
-ARCHIVE_VERSION='1.2'
+ARCHIVE_VERSION='1.2.2'
 MOD_VERSION="$( git describe --tags --abbrev=0 --match='v*' | sed s/^v// )"
 
 BASE='./build'
