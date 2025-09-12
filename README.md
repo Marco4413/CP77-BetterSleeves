@@ -10,6 +10,11 @@ It's highly customizable thanks to blacklists and whitelists that can be managed
 
 This mod also syncs inventory sleeves and allows you to manually roll up/down sleeves in photo mode.
 
+These kind of mods work by swapping FPP models (sleeveless) with TPP ones (sleeved). That's why most
+modded clothing won't work (because it is usually not designed to be seen in both perspectives or to
+be used with a Sleeves mod). Moreover, collars may disappear in TPP if you turn on the inventory
+sync (enabled by default) or auto roll on vehicles TPP (not enabled by default) settings.
+
 There are currently 2 mods which already do what this mod does:
 - [Sleeves (DJ_Kovrik)](https://www.nexusmods.com/cyberpunk2077/mods/3309)
   - This mod is highly integrated with the game, it adds new UI to change the state of sleeves.
@@ -20,7 +25,7 @@ There are currently 2 mods which already do what this mod does:
 
 ### Requirements
 
-- [CET 1.32.0+](https://github.com/yamashi/CyberEngineTweaks)
+- [CET 1.37.0+](https://github.com/yamashi/CyberEngineTweaks)
 - [RenderPlaneFix](https://github.com/Marco4413/CP77-RenderPlaneFix) (recommended, dynamically fixes clothing items rendering)
 
 ### What version should I download?
