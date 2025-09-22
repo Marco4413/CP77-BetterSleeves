@@ -753,10 +753,16 @@ local function Event_OnInit()
     BetterSleeves.slotToAreaType["AttachmentSlots.Torso"] = gamedataEquipmentArea.OuterChest
     BetterSleeves.slotToAreaType["AttachmentSlots.Chest"] = gamedataEquipmentArea.InnerChest
 
+    -- EquipmentEx listeners
+    if EquipmentEx then
+        ObserveAfter("EquipmentEx.OutfitSystem", "EquipItem;ItemIDTweakDBID", Event_UpdateSleeves)
+    end
+
+    -- Game listeners
     Observe("PlayerPuppet", "OnWeaponEquipEvent", Event_UpdateSleeves)
     -- This also triggers when switching from TPP to FPP on vehicles (and vice-versa).
     -- I don't know if it was also triggered in other contexts which made the mod work.
-    -- TODO: Figure out if not listening to this event breaks the mod
+    -- NOTE: This was previously triggered by EquipmentEx
     -- Observe("PlayerPuppet", "OnItemAddedToSlot", Event_UpdateSleeves)
     Observe("PlayerPuppet", "OnItemEquipped", Event_UpdateSleeves)
     Observe("PlayerPuppet", "OnItemUnequipped", Event_UpdateSleeves)
