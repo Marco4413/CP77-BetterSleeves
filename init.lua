@@ -755,7 +755,9 @@ local function Event_OnInit()
 
     -- EquipmentEx listeners
     if EquipmentEx then
-        ObserveAfter("EquipmentEx.OutfitSystem", "EquipItem;ItemIDTweakDBID", Event_UpdateSleeves)
+        -- ObserveAfter("EquipmentEx.OutfitSystem", "EquipItem;ItemIDTweakDBID", Event_UpdateSleeves)
+        -- This is also called within EquipItem(): https://github.com/psiberx/cp2077-equipment-ex/blob/9c3990e758b663dd6dee752fc077f41eada431ce/scripts/OutfitSystem.reds#L617
+        ObserveAfter("EquipmentEx.OutfitSystem", "UnequipItem;ItemID", Event_UpdateSleeves)
     end
 
     -- Game listeners
