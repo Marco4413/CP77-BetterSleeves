@@ -288,7 +288,7 @@ function BetterSleeves:GetItem(puppet, slot)
     if not puppet then return nil; end
     local tSys = Game.GetTransactionSystem()
     local item = tSys:GetItemInSlot(puppet, slot)
-    return item    
+    return item
 end
 
 ---@enum POVChangeResult
@@ -385,7 +385,7 @@ function BetterSleeves:SyncPuppetsPOV(puppetSrc, puppetDst, slot)
     local appSrcName = self:GetItemAppearanceName(puppetSrc, itemSrc)
     if not appSrcName then self.Log("Failed to retrieve appearance name for source."); return false; end
     local isAppSrcTpp = appSrcName:find("&TPP", 1, true)
-    
+
     local appDstName = self:GetItemAppearanceName(puppetDst, itemDst)
     if not appDstName then self.Log("Failed to retrieve appearance name for destination."); return false; end
 
@@ -397,7 +397,7 @@ function BetterSleeves:SyncPuppetsPOV(puppetSrc, puppetDst, slot)
         appDstName, n = appDstName:gsub("&TPP", "&FPP")
         hasChanged = hasChanged or n > 0
     end
-    
+
     if hasChanged then
         local transactionSystem = Game.GetTransactionSystem()
         transactionSystem:ChangeItemAppearanceByName(puppetDst, itemDst:GetItemID(), appDstName)
@@ -439,22 +439,12 @@ function BetterSleeves:ChangeItemPOV(puppet, slot, fpp, itemBlacklist, weaponBla
     -- itemBlacklist contains names without attributes
     if itemBlacklist and itemBlacklist[itemName:match("[^&]+")] then return POVChangeResult.ItemBlacklisted; end
 
-    if weaponBlacklist and puppet.GetActiveWeapon then
-        local weapon = puppet:GetActiveWeapon()
-        if weapon then
-            local weaponName = weapon:GetWeaponRecord():FriendlyName()
-            if weaponBlacklist[weaponName] then return POVChangeResult.WeaponBlacklisted; end
-        end
+    if weaponBlacklist and self:IsWeaponBlacklisted(puppet, weaponBlacklist) then
+        return POVChangeResult.WeaponBlacklisted
     end
 
-    if missionBlacklist then
-        local quest, obj = self:GetTrackedMissionAndObjectiveIds()
-        if quest and (
-            missionBlacklist[table.concat{quest, ".*"}] or
-            missionBlacklist[table.concat{quest, ".", obj}]
-        ) then
-            return POVChangeResult.MissionBlacklisted
-        end
+    if missionBlacklist and self:IsMissionBlacklisted(missionBlacklist) then
+        return POVChangeResult.MissionBlacklisted
     end
 
     local newItemName, hasItemChanged
@@ -489,12 +479,31 @@ function BetterSleeves:IsMissionBlacklisted(missionBlacklist)
 end
 
 ---@param puppet gamePuppet
+---@return string[]
+function BetterSleeves:GetActiveWeaponsName(puppet)
+    ---@type WeaponObject[]
+    local weaponObjects = {}
+    if puppet.GetActiveWeapons then
+        weaponObjects = puppet:GetActiveWeapons()
+    elseif puppet.GetActiveWeapon then
+        table.insert(weaponObjects, puppet:GetActiveWeapon())
+    end
+
+    local weaponNames = {}
+    for _, weaponObject in next, weaponObjects do
+        local weaponRecord = weaponObject:GetWeaponRecord()
+        local weaponName   = weaponRecord:FriendlyName()
+        table.insert(weaponNames, weaponName)
+    end
+    return weaponNames
+end
+
+---@param puppet gamePuppet
 ---@param weaponBlacklist table
 ---@return boolean
 function BetterSleeves:IsWeaponBlacklisted(puppet, weaponBlacklist)
-    local weapon = puppet:GetActiveWeapon()
-    if weapon then
-        local weaponName = weapon:GetWeaponRecord():FriendlyName()
+    local weaponNames = self:GetActiveWeaponsName(puppet)
+    for _, weaponName in next, weaponNames do
         if weaponBlacklist[weaponName] then
             return true
         end
@@ -655,7 +664,7 @@ local function AutoRollSleevesDelayedCB()
     if not BetterSleeves.autoRollOnVehiclesTPP then
         local player = Game.GetPlayer()
         if not player then return; end
-    
+
         -- Handle Vehicles TPP
         local vehicle = player:GetMountedVehicle()
         if vehicle then
@@ -672,7 +681,7 @@ end
 local function SyncSleevesDelayedCB()
     local player = Game.GetPlayer()
     if not player then return; end
-    
+
     local inventoryPuppet = BetterSleeves:GetInventoryPuppet()
     if not inventoryPuppet then return; end
 
@@ -782,7 +791,7 @@ local function Event_OnInit()
     Observe("gameuiInventoryGameController", "OnInitialize", Event_SyncSleeves)
     Observe("gameuiInventoryGameController", "RefreshedEquippedItemData", Event_SyncSleeves)
     -- Observe("gameuiInventoryGameController", "RefreshEquippedWardrobeItems", Event_SyncSleeves)
-    
+
     -- Thanks psiberx! https://github.com/psiberx/cp2077-codeware/blob/main/scripts/Player/PlayerSystem.reds
     -- It's the same as what Codeware does.
     local n_gameuiInventoryPuppetPreviewGameController = CName.new("gameuiInventoryPuppetPreviewGameController");
@@ -1096,10 +1105,9 @@ local function Event_OnDraw()
             end
 
             if player then
-                local weapon = player:GetActiveWeapon()
-                if weapon then
-                    local weaponName = weapon:GetWeaponRecord():FriendlyName()
-                    ImGui.PushID("weapon-qb")
+                local weaponNames = BetterSleeves:GetActiveWeaponsName(player)
+                for i, weaponName in ipairs(weaponNames) do
+                    ImGui.PushID("weapon-qb-" .. tostring(i))
                     if BetterUI.ButtonAdd() then
                         BetterSleeves.rollDownWeaponBlacklist[weaponName] = true
                     end
@@ -1112,7 +1120,7 @@ local function Event_OnDraw()
                         BetterUI.SquareButton("/")
                     end
                     ImGui.SameLine()
-                    ImGui.Text("Weapon Name: " .. weaponName)
+                    ImGui.Text("Weapon" .. tostring(i) .. " Name: " .. weaponName)
                     ImGui.PopID()
                 end
             end
