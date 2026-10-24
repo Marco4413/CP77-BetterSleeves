@@ -1201,6 +1201,8 @@ function BetterSleeves:Init()
     registerInput("force_rollup_sleeves",   "Force Roll Up Sleeves",   _InputAsHotkey(function() self:ToggleSleeves(true, false) end))
     registerInput("force_toggle_sleeves",   "Force Toggle Sleeves",    _InputAsHotkey(function() self:ToggleSleeves(true)        end))
 
+    registerInput("sync_sleeves", "Sync Sleeves", _InputAsHotkey(function() self:SyncKeepState() end))
+
     registerForEvent("onInit",     Event_OnInit)
     registerForEvent("onUpdate",   Event_OnUpdate)
     registerForEvent("onShutdown", Event_OnShutdown)
