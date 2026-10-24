@@ -25,7 +25,7 @@ There are currently 2 mods which already do what this mod does:
 
 ### Requirements
 
-- [CET 1.37.0+](https://github.com/yamashi/CyberEngineTweaks)
+- [CET 1.38.0+](https://github.com/yamashi/CyberEngineTweaks)
 - [RenderPlaneFix](https://github.com/Marco4413/CP77-RenderPlaneFix) (recommended, dynamically fixes clothing items rendering)
 
 ### What version should I download?
