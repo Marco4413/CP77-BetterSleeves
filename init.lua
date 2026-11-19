@@ -295,7 +295,9 @@ end
 local POVChangeResult = {
     Changed = 0,
     NoItem = 1,
+    ---@deprecated
     NoCameraSuffix = 2,
+    NoAppearanceSuffix = 2,
     SamePOV = 3,
     ---@deprecated
     ItemBlacklisted = 4,
@@ -391,11 +393,17 @@ function BetterSleeves:SyncPuppetsPOV(puppetSrc, puppetDst, slot)
 
     local hasChanged = false
     if isAppSrcTpp then
+        local n
         appDstName, n = appDstName:gsub("&FPP", "&TPP")
-        hasChanged = hasChanged or n > 0
+        hasChanged    = hasChanged or n > 0
+        appDstName, n = appDstName:gsub("&Part", "&Full")
+        hasChanged    = hasChanged or n > 0
     else
+        local n
         appDstName, n = appDstName:gsub("&TPP", "&FPP")
-        hasChanged = hasChanged or n > 0
+        hasChanged    = hasChanged or n > 0
+        appDstName, n = appDstName:gsub("&Full", "&Part")
+        hasChanged    = hasChanged or n > 0
     end
 
     if hasChanged then
@@ -409,6 +417,11 @@ end
 ---@param appName string
 function BetterSleeves:HasCameraAppearanceSuffix(appName)
     return appName:find("&[FT]PP") and true or false
+end
+
+---@param appName string
+function BetterSleeves:HasSleevesAppearanceSuffix(appName)
+    return (appName:find("&Part", 1, true) or appName:find("&Full", 1, true)) and true or false
 end
 
 ---Deprecated: Use :ChangeItemPOVForSlot() instead.
@@ -546,18 +559,23 @@ function BetterSleeves:ChangeItemPOVForSlot(puppet, slot, fpp)
     -- end
 
     local itemName = self:GetItemAppearanceName(puppet, item)
-    if not self:HasCameraAppearanceSuffix(itemName) then
+    if (not self:HasCameraAppearanceSuffix(itemName)) and (not self:HasSleevesAppearanceSuffix(itemName)) then
         return POVChangeResult.NoCameraSuffix
     end
 
-    local newItemName, hasItemChanged
+    local newItemName    = itemName
+    local hasItemChanged = false
     if fpp then
         local n
-        newItemName, n = itemName:gsub("&TPP", "&FPP")
+        newItemName, n = newItemName:gsub("&TPP", "&FPP")
+        hasItemChanged = hasItemChanged or n > 0
+        newItemName, n = newItemName:gsub("&Full", "&Part")
         hasItemChanged = hasItemChanged or n > 0
     else
         local n
-        newItemName, n = itemName:gsub("&FPP", "&TPP")
+        newItemName, n = newItemName:gsub("&FPP", "&TPP")
+        hasItemChanged = hasItemChanged or n > 0
+        newItemName, n = newItemName:gsub("&Part", "&Full")
         hasItemChanged = hasItemChanged or n > 0
     end
     if not hasItemChanged then return POVChangeResult.SamePOV; end
