@@ -58,7 +58,7 @@ local BetterSleeves = {
     autoRoll = true,
     autoRollDelay = 1.0,
     autoRollOnVehiclesTPP = false,
-    autoRollVehiclesDelay = 1.0,
+    autoRollVehiclesDelay = 1.5,
     syncInventoryPuppet = true,
     syncInventoryPuppetDelay = 1.0,
     showUI = false,
@@ -136,7 +136,7 @@ function BetterSleeves:ResetConfig()
     self.autoRoll = true
     self.autoRollDelay = 1.0
     self.autoRollOnVehiclesTPP = false
-    self.autoRollVehiclesDelay = 1.0
+    self.autoRollVehiclesDelay = 1.5
     self.syncInventoryPuppet = true
     self.syncInventoryPuppetDelay = 1.0
     self.forceKeepState = false
@@ -864,7 +864,7 @@ local function Event_DoorControllerPS_OnActionDemolition()
     BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.gorillaArmsRollDownDelay)
 end
 
-local function Event_VehicleComponent_OnVehicleCameraChange()
+local function Event_OnVehicleCameraChange()
     BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.autoRollVehiclesDelay)
 end
 
@@ -902,7 +902,9 @@ local function Event_OnInit()
 
     Observe("DoorControllerPS", "OnActionDemolition", Event_DoorControllerPS_OnActionDemolition)
 
-    Observe("VehicleComponent", "OnVehicleCameraChange", Event_VehicleComponent_OnVehicleCameraChange)
+    Observe("VehicleComponent", "OnVehicleCameraChange", Event_OnVehicleCameraChange)
+    -- Handle falling from a motorcycle
+    Observe("VehicleComponent", "OnUnmountingEvent", Event_OnVehicleCameraChange)
 
     -- On menu open is only needed for the first time the menu is opened.
     -- Event_UpdateSleeves will sync the inventory before the menu is even opened which makes inventory loading faster.
