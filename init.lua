@@ -1057,15 +1057,17 @@ local function Event_OnDraw()
         ---@param rule SleevesRule
         local function ImSleevesRule(rule)
             ImGui.PushID("fpp")
-                ImGui.Text("FPP")
-                ImGui.SameLine()
                 rule.fpp = Enum.ImCombo(SleevesState, rule.fpp, "")
+                if ImGui.IsItemHovered() then
+                    ImGui.SetTooltip("FPP (First Person)")
+                end
             ImGui.PopID()
             ImGui.SameLine()
             ImGui.PushID("tpp")
-                ImGui.Text("TPP")
-                ImGui.SameLine()
                 rule.tpp = Enum.ImCombo(SleevesState, rule.tpp, "")
+                if ImGui.IsItemHovered() then
+                    ImGui.SetTooltip("TPP (Third Person)")
+                end
             ImGui.PopID()
         end
 
@@ -1108,19 +1110,19 @@ local function Event_OnDraw()
             ImGui.TextWrapped(table.concat{
                 "Rules change the default behaviour of the mod for a specific",
                 " mission, item and/or weapon depending on if you're looking at",
-                " your character in FPP or TPP. Keep sleeves rolled up for items",
-                " which have collars that clip in FPP or keep them rolled down",
-                " for the ones which disappear in TPP, you can customize YOUR",
-                " experience from this menu."
+                " your character in First Person (FPP) or Third Person (TPP).",
+                " Keep sleeves rolled up for items that clip in FPP or keep them",
+                " rolled down for the ones that have parts which disappear in TPP,",
+                " you can customize YOUR experience from this menu."
             })
             ImGui.TextWrapped("Rules are applied in the following order: Global State > Mission (Quest) > Mission (Objective) > Item > Weapon")
             ImGui.TextWrapped("You can choose between \"Current\", \"Rolled Down\" or \"Rolled Up\":")
             ImGui.Bullet(); ImGui.SameLine()
                 ImGui.TextWrapped("\"Current\" does not modify the behaviour of previously applied rules.")
             ImGui.Bullet(); ImGui.SameLine()
-                ImGui.TextWrapped("\"Rolled Down\" vanilla behaviour for TPP, sleeves are rolled down.")
+                ImGui.TextWrapped("\"Rolled Down\" sleeves are rolled down (vanilla behaviour for TPP).")
             ImGui.Bullet(); ImGui.SameLine()
-                ImGui.TextWrapped("\"Rolled Up\" vanilla behaviour for FPP, sleeves are rolled up.")
+                ImGui.TextWrapped("\"Rolled Up\" sleeves are rolled up (vanilla behaviour for FPP).")
             ImGui.Separator()
 
             if ImSleevesRulesBegin("quick") then
@@ -1158,8 +1160,8 @@ local function Event_OnDraw()
                 ImSleevesRulesEnd()
             end
 
-            if ImGui.CollapsingHeader("Mission") then
-                if ImSleevesRulesBegin("mission") then
+            if ImGui.CollapsingHeader("Missions") then
+                if ImSleevesRulesBegin("missions") then
                     for missionName, rule in next, mod.missionRules do
                         ImSleevesRulesEntry(mod.missionRules, missionName, "mission", "")
                     end
@@ -1171,8 +1173,8 @@ local function Event_OnDraw()
                 end
             end
 
-            if ImGui.CollapsingHeader("Item") then
-                if ImSleevesRulesBegin("item") then
+            if ImGui.CollapsingHeader("Items") then
+                if ImSleevesRulesBegin("items") then
                     for itemName, rule in next, mod.itemRules do
                         ImSleevesRulesEntry(mod.itemRules, itemName, "item", "")
                     end
@@ -1184,8 +1186,8 @@ local function Event_OnDraw()
                 end
             end
 
-            if ImGui.CollapsingHeader("Weapon") then
-                if ImSleevesRulesBegin("weapon") then
+            if ImGui.CollapsingHeader("Weapons") then
+                if ImSleevesRulesBegin("weapons") then
                     for weaponName, rule in next, mod.weaponRules do
                         ImSleevesRulesEntry(mod.weaponRules, weaponName, "weapon", "")
                     end
