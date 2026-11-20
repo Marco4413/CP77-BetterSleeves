@@ -17,7 +17,7 @@ mkdir -p "$CET_TARGET"
 
 cp './archive/pc/mod/BetterSleeves - Archive Fixes.archive' "$ARCHIVE_TARGET/"
 
-CET_FILES=( 'init.lua' 'BetterUI.lua' 'Scheduler.lua' 'README.md' 'LICENSE.md' )
+CET_FILES=( 'init.lua' 'BetterUI.lua' 'Enum.lua' 'Scheduler.lua' 'README.md' 'LICENSE.md' )
 for file in "${CET_FILES[@]}"; do
     cp "$file" "$CET_TARGET"
 done

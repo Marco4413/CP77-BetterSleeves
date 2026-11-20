@@ -23,10 +23,24 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 ]]
 
-local BetterUI = require "BetterUI"
+local BetterUI  = require "BetterUI"
+local Enum      = require "Enum"
 local Scheduler = require "Scheduler"
 
+---@enum SleevesState
+local SleevesState = Enum.New{
+    Current    = 1,
+    RolledDown = 2,
+    RolledUp   = 3,
+}
+
+---@class SleevesRule
+---@field fpp SleevesState
+---@field tpp SleevesState
+
 local BetterSleeves = {
+    SleevesState = SleevesState,
+
     autoRoll = true,
     autoRollDelay = 1.0,
     autoRollOnVehiclesTPP = false,
@@ -35,32 +49,56 @@ local BetterSleeves = {
     syncInventoryPuppetDelay = 1.0,
     showUI = false,
     scheduler = Scheduler.New(),
-    forceKeepRolledDown = false,
-    keepRolledDown = true,
-    rollDownItemBlacklist = {},
-    rollDownWeaponBlacklist = {},
-    rollDownMissionBlacklist = {},
+
+    forceKeepState = false,
+    ---@type SleevesState
+    keepState = SleevesState.RolledDown,
+
+    ---@type table<string, SleevesRule>
+    missionRules = {},
+    ---@type table<string, SleevesRule>
+    itemRules = {},
+    ---@type table<string, SleevesRule>
+    weaponRules = {},
+
     slotsToRoll = {},
     SlotType = {
         USER_DEFINED = 0,
         VANILLA = 1,
         EQUIPMENT_EX = 2,
     },
-    _newItem = "",
-    _newWeapon = "",
-    _newMission = "",
     _newSlot = "",
     slotToAreaType = {},
     _configInitialized = false,
     -- Populated within Event_OnInit
 
-    ---Deprecated: See BetterSleeves:HasCameraAppearanceSuffix()
+    ---@deprecated
     appearanceSuffixCameraRecord = nil,
     gorillaArmsWeaponName = "w_strong_arms",
     gorillaArmsRollUpOnDoorOpen = true,
     gorillaArmsRollDownDelay = 3.15,
     _inventoryPuppet = nil,
     _photoPuppet = nil,
+
+    ---Deprecated: See `forceKeepState`
+    ---@deprecated
+    forceKeepRolledDown = false,
+    ---Deprecated: See `keepState`
+    ---@deprecated
+    keepRolledDown = true,
+
+    ---Deprecated: See `itemRules`
+    ---@deprecated
+    ---@type table<string, boolean>
+    rollDownItemBlacklist = {},
+    ---Deprecated: See `weaponRules`
+    ---@deprecated
+    ---@type table<string, boolean>
+    rollDownWeaponBlacklist = {},
+    ---Deprecated: See `missionRules`
+    ---@deprecated
+    ---@type table<string, boolean>
+    rollDownMissionBlacklist = {},
 }
 
 function BetterSleeves.Log(...)
@@ -91,11 +129,11 @@ function BetterSleeves:ResetConfig()
     self.autoRollVehiclesDelay = 1.0
     self.syncInventoryPuppet = true
     self.syncInventoryPuppetDelay = 1.0
-    self.forceKeepRolledDown = false
-    self.keepRolledDown = true
-    self.rollDownItemBlacklist = {}
-    self.rollDownWeaponBlacklist = {}
-    self.rollDownMissionBlacklist = {}
+    self.forceKeepState = false
+    self.keepState = SleevesState.RolledDown
+    self.missionRules = {}
+    self.itemRules = {}
+    self.weaponRules = {}
     self.slotsToRoll = {
         ["AttachmentSlots.Outfit"]  = { type = self.SlotType.VANILLA, enabled = true, userHandled = false },
         ["AttachmentSlots.Torso"]   = { type = self.SlotType.VANILLA, enabled = true, userHandled = false },
@@ -112,8 +150,51 @@ function BetterSleeves:ResetConfig()
     }
     self.gorillaArmsRollUpOnDoorOpen = true
     self.gorillaArmsRollDownDelay = 3.15
-    -- Add all blacklist entries
+
+    self.forceKeepRolledDown = false
+    self.keepRolledDown = true
+    self.rollDownItemBlacklist = {}
+    self.rollDownWeaponBlacklist = {}
+    self.rollDownMissionBlacklist = {}
+
+    -- Add all blacklist entries and migrate from deprecated fields
     self:MigrateConfigFromVersion(nil)
+end
+
+---@param rule SleevesRule
+---@return table
+function BetterSleeves:GetSleevesRuleForConfig(rule)
+    return { fpp = SleevesState[rule.fpp], tpp = SleevesState[rule.tpp] }
+end
+
+---@param rules table<string, SleevesRule>
+---@return table
+function BetterSleeves:GetSleevesRulesForConfig(rules)
+    local rulesForConfig = {}
+    for id, rule in next, rules do
+        rulesForConfig[id] = self:GetSleevesRuleForConfig(rule)
+    end
+    return rulesForConfig
+end
+
+---@param ruleConfig table
+---@return SleevesRule|nil
+function BetterSleeves:GetSleevesRuleFromConfig(ruleConfig)
+    if type(ruleConfig.fpp) ~= "string" and not SleevesState[ruleConfig.fpp] then return nil; end
+    if type(ruleConfig.tpp) ~= "string" and not SleevesState[ruleConfig.tpp] then return nil; end
+    return { fpp = SleevesState[ruleConfig.fpp], tpp = SleevesState[ruleConfig.tpp] }
+end
+
+---@param ruleConfig table
+---@return table<string, SleevesRule>
+function BetterSleeves:GetSleevesRulesFromConfig(rulesConfig)
+    local rules = {}
+    for id, ruleConfig in next, rulesConfig do
+        if type(id) == "string" and type(ruleConfig) == "table" then
+            rules[id] = self:GetSleevesRuleFromConfig(ruleConfig)
+        end
+    end
+    return rules
 end
 
 function BetterSleeves:SaveConfig()
@@ -127,18 +208,18 @@ function BetterSleeves:SaveConfig()
     end
 
     file:write(json.encode({
-        version = 5,
+        version = 6,
         autoRoll = self.autoRoll,
         autoRollDelay = self.autoRollDelay,
         autoRollOnVehiclesTPP = self.autoRollOnVehiclesTPP,
         autoRollVehiclesDelay = self.autoRollVehiclesDelay,
         syncInventoryPuppet = self.syncInventoryPuppet,
         syncInventoryPuppetDelay = self.syncInventoryPuppetDelay,
-        forceKeepRolledDown = self.forceKeepRolledDown,
-        keepRolledDown = self.keepRolledDown,
-        rollDownItemBlacklist = self.rollDownItemBlacklist,
-        rollDownWeaponBlacklist = self.rollDownWeaponBlacklist,
-        rollDownMissionBlacklist = self.rollDownMissionBlacklist,
+        forceKeepState = self.forceKeepState,
+        keepState = SleevesState[self.keepState],
+        missionRules = self:GetSleevesRulesForConfig(self.missionRules),
+        itemRules = self:GetSleevesRulesForConfig(self.itemRules),
+        weaponRules = self:GetSleevesRulesForConfig(self.weaponRules),
         slotsToRoll = slotsToSave,
         gorillaArmsRollUpOnDoorOpen = self.gorillaArmsRollUpOnDoorOpen,
         gorillaArmsRollDownDelay = self.gorillaArmsRollDownDelay,
@@ -185,11 +266,34 @@ function BetterSleeves:MigrateConfigFromVersion(version)
         self.autoRollVehiclesDelay = self.autoRollDelay
     end
 
+    if version <= 5 then
+        version = 6
+        self.forceKeepState = self.forceKeepRolledDown
+        self.keepState      = self.keepRolledDown and SleevesState.RolledDown or SleevesState.RolledUp
+
+        local blacklistMigrations = {
+            { blacklist = self.rollDownMissionBlacklist, rules = self.missionRules },
+            { blacklist = self.rollDownItemBlacklist,    rules = self.itemRules    },
+            { blacklist = self.rollDownWeaponBlacklist,  rules = self.weaponRules  },
+        }
+
+        for _, migration in next, blacklistMigrations do
+            for id, blacklisted in next, migration.blacklist do
+                if blacklisted then
+                    migration.rules[id] = {
+                        fpp = SleevesState.RolledUp,
+                        tpp = SleevesState.RolledDown,
+                    }
+                end
+            end
+        end
+    end
+
     -- Migrate from version x to latest
 end
 
 function BetterSleeves:LoadConfig()
-    local ok = pcall(function ()
+    local ok = pcall(function()
         local file = io.open("data/config.json", "r")
         local configText = file:read("*a")
         io.close(file)
@@ -221,24 +325,24 @@ function BetterSleeves:LoadConfig()
             self.syncInventoryPuppetDelay = config.syncInventoryPuppetDelay
         end
 
-        if type(config.forceKeepRolledDown) == "boolean" then
-            self.forceKeepRolledDown = config.forceKeepRolledDown
+        if type(config.forceKeepState) == "boolean" then
+            self.forceKeepState = config.forceKeepState
         end
 
-        if type(config.keepRolledDown) == "boolean" then
-            self.keepRolledDown = config.keepRolledDown
+        if type(config.keepState) == "string" then
+            self.keepState = SleevesState[config.keepState]
         end
 
-        if type(config.rollDownItemBlacklist) == "table" then
-            self.rollDownItemBlacklist = config.rollDownItemBlacklist
+        if type(config.missionRules) == "table" then
+            self.missionRules = self:GetSleevesRulesFromConfig(config.missionRules)
         end
 
-        if type(config.rollDownWeaponBlacklist) == "table" then
-            self.rollDownWeaponBlacklist = config.rollDownWeaponBlacklist
+        if type(config.itemRules) == "table" then
+            self.itemRules = self:GetSleevesRulesFromConfig(config.itemRules)
         end
 
-        if type(config.rollDownMissionBlacklist) == "table" then
-            self.rollDownMissionBlacklist = config.rollDownMissionBlacklist
+        if type(config.weaponRules) == "table" then
+            self.weaponRules = self:GetSleevesRulesFromConfig(config.weaponRules)
         end
 
         if type(config.slotsToRoll) == "table" then
@@ -266,6 +370,27 @@ function BetterSleeves:LoadConfig()
             self.gorillaArmsRollDownDelay = config.gorillaArmsRollDownDelay
         end
 
+        -- DEPRECATED FIELDS
+        if type(config.forceKeepRolledDown) == "boolean" then
+            self.forceKeepRolledDown = config.forceKeepRolledDown
+        end
+
+        if type(config.keepRolledDown) == "boolean" then
+            self.keepRolledDown = config.keepRolledDown
+        end
+
+        if type(config.rollDownItemBlacklist) == "table" then
+            self.rollDownItemBlacklist = config.rollDownItemBlacklist
+        end
+
+        if type(config.rollDownWeaponBlacklist) == "table" then
+            self.rollDownWeaponBlacklist = config.rollDownWeaponBlacklist
+        end
+
+        if type(config.rollDownMissionBlacklist) == "table" then
+            self.rollDownMissionBlacklist = config.rollDownMissionBlacklist
+        end
+
         self:MigrateConfigFromVersion(config.version)
     end)
     if not ok then self:SaveConfig(); end
@@ -276,60 +401,44 @@ end
 ---@return string|nil
 function BetterSleeves:GetItemAppearanceName(puppet, item)
     if not puppet then return nil; end
-    local tSys = Game.GetTransactionSystem()
-    local itemApp = tSys:GetItemAppearance(puppet, item:GetItemID())
-    return itemApp and itemApp.value or nil
+    local transactionSystem = Game.GetTransactionSystem()
+    local itemAppearance = transactionSystem:GetItemAppearance(puppet, item:GetItemID())
+    return itemAppearance and itemAppearance.value or nil
 end
 
 ---@param puppet gamePuppet
----@param slot string
+---@param slotName string
 ---@return gameItemObject|nil
-function BetterSleeves:GetItem(puppet, slot)
+function BetterSleeves:GetItem(puppet, slotName)
     if not puppet then return nil; end
-    local tSys = Game.GetTransactionSystem()
-    local item = tSys:GetItemInSlot(puppet, slot)
+    local transactionSystem = Game.GetTransactionSystem()
+    local item = transactionSystem:GetItemInSlot(puppet, slotName)
     return item
 end
 
----@enum POVChangeResult
-local POVChangeResult = {
-    Changed = 0,
-    NoItem = 1,
-    ---@deprecated
-    NoCameraSuffix = 2,
-    NoAppearanceSuffix = 2,
-    SamePOV = 3,
-    ---@deprecated
-    ItemBlacklisted = 4,
-    ---@deprecated
-    WeaponBlacklisted = 5,
-    ---@deprecated
-    MissionBlacklisted = 6,
-}
-
-BetterSleeves.POVChangeResult = POVChangeResult
-
-function BetterSleeves:GetTrackedMissionAndObjectiveIds()
+---@return string|nil questId
+---@return string|nil objectiveId
+function BetterSleeves:GetTrackedQuestAndObjectiveIds()
     local journal = Game.GetJournalManager()
 
     -- gameJournalQuestObjective[ id:02_meet_hanako ]
-    local obj = journal:GetTrackedEntry()
-    if not obj then return; end
+    local objective = journal:GetTrackedEntry()
+    if not objective then return; end
 
     -- gameJournalQuestPhase[ id:q115 ]
-    local phase = journal:GetParentEntry(obj)
+    local phase = journal:GetParentEntry(objective)
     if not phase then return; end
 
     -- gameJournalQuest[ id:02_sickness ]
     local quest = journal:GetParentEntry(phase)
     if not quest then return; end
 
-    return quest.id, obj.id
+    return quest.id, objective.id
 end
 
 ---@param checkWardrobe boolean|nil Whether to filter by active wardrobe slots (default: true)
 ---@return string[] slots The slots that need to be rolled
-function BetterSleeves:GetActiveSlots(checkWardrobe)
+function BetterSleeves:GetSlotNamesToRoll(checkWardrobe)
     checkWardrobe = checkWardrobe == nil and true or checkWardrobe
 
     local wardrobeSystem = checkWardrobe  and Game.GetWardrobeSystem() or nil
@@ -361,6 +470,15 @@ function BetterSleeves:GetActiveSlots(checkWardrobe)
     return slots
 end
 
+---@return string[] slots All known slots
+function BetterSleeves:GetAllSlots()
+    local slots = {}
+    for slotName, _ in next, self.slotsToRoll do
+        table.insert(slots, slotName)
+    end
+    return slots
+end
+
 function BetterSleeves:GetInventoryPuppet()
     return self._inventoryPuppet
 end
@@ -369,126 +487,49 @@ function BetterSleeves:GetPhotoPuppet()
     return self._photoPuppet
 end
 
----@return gamePuppet[] puppets All puppets where sleeves need to be handled
-function BetterSleeves:GetActivePuppets()
-    local puppets = {Game.GetPlayer()}
+---@param player PlayerPuppet
+---@return boolean
+function BetterSleeves:IsPlayerPuppetInTPP(player)
+    local vehicle = player:GetMountedVehicle()
+    if vehicle then
+        local cameraManager = vehicle:GetCameraManager()
+        if cameraManager and cameraManager:IsTPPActive() then
+            return true
+        end
+    end
+    return false
+end
+
+---@return gamePuppet[] puppets All fpp puppets where sleeves need to be handled
+function BetterSleeves:GetPuppetsFPP()
+    local puppets = {}
+    local player = Game.GetPlayer()
+    if not self:IsPlayerPuppetInTPP(player) then
+        table.insert(puppets, player)
+    end
+    return puppets
+end
+
+---@return gamePuppet[] puppets All tpp puppets where sleeves need to be handled
+function BetterSleeves:GetPuppetsTPP()
+    local puppets = {}
+    local player = Game.GetPlayer()
+    if self:IsPlayerPuppetInTPP(player) then
+        table.insert(puppets, player)
+    end
     if self.syncInventoryPuppet then
         table.insert(puppets, self:GetInventoryPuppet())
     end
     return puppets
 end
 
-function BetterSleeves:SyncPuppetsPOV(puppetSrc, puppetDst, slot)
-    local itemSrc = self:GetItem(puppetSrc, slot)
-    if not itemSrc then return false; end
-    local itemDst = self:GetItem(puppetDst, slot)
-    if not itemDst then return false; end
-
-    local appSrcName = self:GetItemAppearanceName(puppetSrc, itemSrc)
-    if not appSrcName then self.Log("Failed to retrieve appearance name for source."); return false; end
-    local isAppSrcTpp = appSrcName:find("&TPP", 1, true)
-
-    local appDstName = self:GetItemAppearanceName(puppetDst, itemDst)
-    if not appDstName then self.Log("Failed to retrieve appearance name for destination."); return false; end
-
-    local hasChanged = false
-    if isAppSrcTpp then
-        local n
-        appDstName, n = appDstName:gsub("&FPP", "&TPP")
-        hasChanged    = hasChanged or n > 0
-        appDstName, n = appDstName:gsub("&Part", "&Full")
-        hasChanged    = hasChanged or n > 0
-    else
-        local n
-        appDstName, n = appDstName:gsub("&TPP", "&FPP")
-        hasChanged    = hasChanged or n > 0
-        appDstName, n = appDstName:gsub("&Full", "&Part")
-        hasChanged    = hasChanged or n > 0
+---@return gamePuppet[] puppets All puppets where sleeves need to be handled
+function BetterSleeves:GetPuppets()
+    local puppets = self:GetPuppetsFPP()
+    for _, puppet in next, self:GetPuppetsTPP() do
+        table.insert(puppets, puppet)
     end
-
-    if hasChanged then
-        local transactionSystem = Game.GetTransactionSystem()
-        transactionSystem:ChangeItemAppearanceByName(puppetDst, itemDst:GetItemID(), appDstName)
-    end
-
-    return hasChanged
-end
-
----@param appName string
-function BetterSleeves:HasCameraAppearanceSuffix(appName)
-    return appName:find("&[FT]PP") and true or false
-end
-
----@param appName string
-function BetterSleeves:HasSleevesAppearanceSuffix(appName)
-    return (appName:find("&Part", 1, true) or appName:find("&Full", 1, true)) and true or false
-end
-
----Deprecated: Use :ChangeItemPOVForSlot() instead.
----@deprecated
----@param puppet gamePuppet
----@param slot string
----@param fpp boolean
----@param itemBlacklist table
----@param weaponBlacklist table
----@param missionBlacklist table
----@return POVChangeResult
-function BetterSleeves:ChangeItemPOV(puppet, slot, fpp, itemBlacklist, weaponBlacklist, missionBlacklist)
-    self.Log("Usage of deprecated function :ChangeItemPOV(), please use :ChangeItemPOVForSlot() instead.")
-    local item = self:GetItem(puppet, slot)
-    if not item then return POVChangeResult.NoItem; end
-
-    -- Removed because some items returned false even though they have a Camera Suffix
-    -- local itemRecord = TweakDB:GetRecord(item:GetItemID().id)
-    -- if not itemRecord:AppearanceSuffixesContains(self.appearanceSuffixCameraRecord) then
-    --     return POVChangeResult.NoCameraSuffix
-    -- end
-
-    local itemName = self:GetItemAppearanceName(puppet, item)
-    if not self:HasCameraAppearanceSuffix(itemName) then
-        return POVChangeResult.NoCameraSuffix
-    end
-
-    -- itemBlacklist contains names without attributes
-    if itemBlacklist and itemBlacklist[itemName:match("[^&]+")] then return POVChangeResult.ItemBlacklisted; end
-
-    if weaponBlacklist and self:IsWeaponBlacklisted(puppet, weaponBlacklist) then
-        return POVChangeResult.WeaponBlacklisted
-    end
-
-    if missionBlacklist and self:IsMissionBlacklisted(missionBlacklist) then
-        return POVChangeResult.MissionBlacklisted
-    end
-
-    local newItemName, hasItemChanged
-    if fpp then
-        local n
-        newItemName, n = itemName:gsub("&TPP", "&FPP")
-        hasItemChanged = hasItemChanged or n > 0
-    else
-        local n
-        newItemName, n = itemName:gsub("&FPP", "&TPP")
-        hasItemChanged = hasItemChanged or n > 0
-    end
-    if not hasItemChanged then return POVChangeResult.SamePOV; end
-
-    local tSys = Game.GetTransactionSystem()
-    tSys:ChangeItemAppearanceByName(puppet, item:GetItemID(), newItemName)
-    return POVChangeResult.Changed
-end
-
----@param missionBlacklist table
----@return boolean
-function BetterSleeves:IsMissionBlacklisted(missionBlacklist)
-    local quest, obj = self:GetTrackedMissionAndObjectiveIds()
-    if quest and (
-        missionBlacklist[table.concat{quest, ".*"}] or
-        missionBlacklist[table.concat{quest, ".", obj}]
-    ) then
-        return true
-    end
-
-    return false
+    return puppets
 end
 
 ---@param puppet gamePuppet
@@ -511,234 +552,276 @@ function BetterSleeves:GetActiveWeaponsName(puppet)
     return weaponNames
 end
 
----@param puppet gamePuppet
----@param weaponBlacklist table
----@return boolean
-function BetterSleeves:IsWeaponBlacklisted(puppet, weaponBlacklist)
-    local weaponNames = self:GetActiveWeaponsName(puppet)
-    for _, weaponName in next, weaponNames do
-        if weaponBlacklist[weaponName] then
-            return true
+function BetterSleeves:CreateRuleFetchingContext()
+    local context = {
+        _mod            = self,
+        ---@type gamePuppet|nil
+        _puppet         = nil,
+        ---@type string|nil
+        _slotName       = nil,
+        ---@type string|nil
+        _questId        = nil,
+        ---@type string|nil
+        _objectiveId    = nil,
+        ---@type string|nil
+        _itemAppearance = nil,
+        _weaponNames    = {},
+        ---@type SleevesRule|nil
+        _sleevesRule    = nil,
+    }
+
+    local questId, objectiveId = self:GetTrackedQuestAndObjectiveIds()
+    if questId then
+        context._questId = table.concat{questId, ".*"}
+        if objectiveId then
+            context._objectiveId = table.concat{questId, ".", objectiveId}
         end
     end
 
-    return false
+    ---@param puppet gamePuppet|nil
+    function context:SetPuppet(puppet)
+        self._sleevesRule = nil
+
+        self._puppet = puppet
+        self:SetSlot(self._slotName)
+        self._weaponNames = {}
+        if not puppet then return; end
+
+        self._weaponNames = self._mod:GetActiveWeaponsName(puppet)
+    end
+
+    ---@param slotName string
+    function context:SetSlot(slotName)
+        self._sleevesRule = nil
+
+        self._slotName       = slotName
+        self._itemAppearance = nil
+        if not self._puppet or not slotName then return; end
+
+        local item = self._mod:GetItem(self._puppet, slotName)
+        if not item then return; end
+
+        self._itemAppearance = self._mod:GetItemAppearanceName(self._puppet, item)
+    end
+
+    ---@return string|nil
+    function context:GetItemName()
+        if not self._itemAppearance then return nil; end
+        return self._itemAppearance:match("[^&]+")
+    end
+
+    ---@private
+    function context:_GetRuleList()
+        ---@type SleevesRule[]
+        local ruleStack = {{
+            fpp = self._mod.keepState,
+            tpp = self._mod.keepState,
+        }}
+
+        if self._mod.forceKeepState then return ruleStack; end
+
+        if self._questId then
+            table.insert(ruleStack, self._mod.missionRules[self._questId])
+        end
+        if self._objectiveId then
+            table.insert(ruleStack, self._mod.missionRules[self._objectiveId])
+        end
+
+        local itemName = self:GetItemName()
+        if itemName then
+            table.insert(ruleStack, self._mod.itemRules[itemName])
+        end
+
+        for i=#self._weaponNames, 1, -1 do
+            local weaponName = self._weaponNames[i]
+            table.insert(ruleStack, self._mod.weaponRules[weaponName])
+        end
+
+        return ruleStack
+    end
+
+    ---@return SleevesRule
+    function context:GetSleevesRule()
+        if self._sleevesRule then return self._sleevesRule; end
+
+        local ruleList = self:_GetRuleList()
+        ---@type SleevesRule
+        local sleevesRule = ruleList[1]
+
+        for i=2, #ruleList do
+            local rule = ruleList[i]
+            if rule.fpp ~= SleevesState.Current then
+                sleevesRule.fpp = rule.fpp
+            end
+            if rule.tpp ~= SleevesState.Current then
+                sleevesRule.tpp = rule.tpp
+            end
+        end
+
+        self._sleevesRule = sleevesRule
+        return sleevesRule
+    end
+
+    ---@param slotName string
+    ---@param pov "fpp"|"tpp"
+    function context:ApplySleevesRuleForSlot(slotName, pov)
+        self:SetSlot(slotName)
+        if not self._puppet then return false; end
+
+        local rule = self:GetSleevesRule()
+        local keepState = rule[pov]
+        return self._mod:ChangeStateForSlot(self._puppet, slotName, keepState)
+    end
+
+    return context
 end
 
 ---@param puppet gamePuppet
----@param slot string
----@param itemBlacklist table
----@return boolean
-function BetterSleeves:IsItemInSlotBlacklisted(puppet, slot, itemBlacklist)
-    if not itemBlacklist then return false; end
+---@param slotName string
+---@param keepState SleevesState
+---@return boolean changed
+function BetterSleeves:ChangeStateForSlot(puppet, slotName, keepState)
+    if keepState == SleevesState.Current then return false; end
 
-    local item = self:GetItem(puppet, slot)
+    local item = self:GetItem(puppet, slotName)
     if not item then return false; end
 
-    local itemName = self:GetItemAppearanceName(puppet, item)
-    -- itemBlacklist contains names without attributes
-    if itemBlacklist[itemName:match("[^&]+")] then
-        return true
+    local appearanceName = self:GetItemAppearanceName(puppet, item)
+
+    local newAppearanceName    = appearanceName
+    local hasAppearanceChanged = false
+    if keepState == SleevesState.RolledUp then
+        local n
+        newAppearanceName, n = newAppearanceName:gsub("&TPP", "&FPP")
+        hasAppearanceChanged = hasAppearanceChanged or n > 0
+        newAppearanceName, n = newAppearanceName:gsub("&Full", "&Part")
+        hasAppearanceChanged = hasAppearanceChanged or n > 0
+    elseif keepState == SleevesState.RolledDown then
+        local n
+        newAppearanceName, n = newAppearanceName:gsub("&FPP", "&TPP")
+        hasAppearanceChanged = hasAppearanceChanged or n > 0
+        newAppearanceName, n = newAppearanceName:gsub("&Part", "&Full")
+        hasAppearanceChanged = hasAppearanceChanged or n > 0
+    else
+        assert(false, "unhandled keep state '" .. SleevesState[keepState] .. "'")
     end
 
-    return false
+    if not hasAppearanceChanged then return false; end
+
+    local transactionSystem = Game.GetTransactionSystem()
+    transactionSystem:ChangeItemAppearanceByName(puppet, item:GetItemID(), newAppearanceName)
+    return true
 end
 
+---@param slots string[]|nil
 ---@param puppet gamePuppet
----@param slot string
----@param fpp boolean
----@return POVChangeResult
-function BetterSleeves:ChangeItemPOVForSlot(puppet, slot, fpp)
-    local item = self:GetItem(puppet, slot)
-    if not item then return POVChangeResult.NoItem; end
-
-    -- Removed because some items returned false even though they have a Camera Suffix
-    -- local itemRecord = TweakDB:GetRecord(item:GetItemID().id)
-    -- if not itemRecord:AppearanceSuffixesContains(self.appearanceSuffixCameraRecord) then
-    --     return POVChangeResult.NoCameraSuffix
-    -- end
-
-    local itemName = self:GetItemAppearanceName(puppet, item)
-    if (not self:HasCameraAppearanceSuffix(itemName)) and (not self:HasSleevesAppearanceSuffix(itemName)) then
-        return POVChangeResult.NoCameraSuffix
-    end
-
-    local newItemName    = itemName
-    local hasItemChanged = false
-    if fpp then
-        local n
-        newItemName, n = newItemName:gsub("&TPP", "&FPP")
-        hasItemChanged = hasItemChanged or n > 0
-        newItemName, n = newItemName:gsub("&Full", "&Part")
-        hasItemChanged = hasItemChanged or n > 0
-    else
-        local n
-        newItemName, n = newItemName:gsub("&FPP", "&TPP")
-        hasItemChanged = hasItemChanged or n > 0
-        newItemName, n = newItemName:gsub("&Part", "&Full")
-        hasItemChanged = hasItemChanged or n > 0
-    end
-    if not hasItemChanged then return POVChangeResult.SamePOV; end
-
-    local tSys = Game.GetTransactionSystem()
-    tSys:ChangeItemAppearanceByName(puppet, item:GetItemID(), newItemName)
-    return POVChangeResult.Changed
-end
-
----@param force boolean
----@param puppets gamePuppet[]|nil
-function BetterSleeves:RollDownSleeves(force, puppets)
-    local slots = self:GetActiveSlots(true)
-    local puppets = puppets or self:GetActivePuppets()
-    if force then
-        for _, puppet in next, puppets do
-            for _, slot in next, slots do
-                self:ChangeItemPOVForSlot(puppet, slot, false)
-            end
-        end
-    else
-        local missionBlacklist = self.rollDownMissionBlacklist
-        local weaponBlacklist = self.rollDownWeaponBlacklist
-        local itemBlacklist = self.rollDownItemBlacklist
-
-        if self:IsMissionBlacklisted(missionBlacklist) then
-            self:RollUpSleeves(false, puppets)
-        else
-            for _, puppet in next, puppets do
-                if self:IsWeaponBlacklisted(puppet, weaponBlacklist) then
-                    self:RollUpSleeves(false, {puppet})
-                else
-                    local isItemInSlotBlacklisted = {}
-                    local areAllItemsBlacklisted  = true
-
-                    for i, slot in next, slots do
-                        table.insert(isItemInSlotBlacklisted, self:IsItemInSlotBlacklisted(puppet, slot, itemBlacklist))
-                        if isItemInSlotBlacklisted[i] then
-                            self:RollUpSleevesForSlot(slot, {puppet})
-                        else
-                            areAllBlacklisted = false
-                        end
-                    end
-
-                    -- TODO: Figure out if swapping all items to TPP at the end fixes a reported issue.
-                    if not areAllBlacklisted then
-                        for i, slot in next, slots do
-                            if not isItemInSlotBlacklisted[i] then
-                                self:ChangeItemPOVForSlot(puppet, slot, false)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-
----@param slot string
----@param puppets gamePuppet[]|nil
-function BetterSleeves:RollUpSleevesForSlot(slot, puppets)
-    -- TODO: Deprecate this function?
-    puppets = puppets or self:GetActivePuppets()
-    for _, puppet in next, puppets do
-        if not self:IsItemInSlotBlacklisted(puppet, slot, { ["empty_appearance_default"] = true }) then
-            self:ChangeItemPOVForSlot(puppet, slot, true)
-        end
-    end
-end
-
----@param all boolean
----@param puppets gamePuppet[]|nil
-function BetterSleeves:RollUpSleeves(all, puppets)
-    local player = Game.GetPlayer()
-    if not player then return; end
-
-    puppets = puppets or self:GetActivePuppets()
-    for slotName, slot in next, self.slotsToRoll do
-        -- TODO: Figure out why :GetActiveSlots() was not used here.
-        --       Probably there was some bug that only happened when rolling down.
-        if all or slot.enabled then
-            self:RollUpSleevesForSlot(slotName, puppets)
-        end
-    end
-end
-
-function BetterSleeves:SyncKeepState()
-    if self.keepRolledDown then
-        self:RollDownSleeves(self.forceKeepRolledDown)
-    else
-        self:RollUpSleeves()
-    end
-end
-
----@param force boolean
----@param rollDown boolean|nil If nil, sleeves are toggled.
-function BetterSleeves:ToggleSleeves(force, rollDown)
-    self.forceKeepRolledDown = (force == true)
-    self.keepRolledDown = (rollDown == nil) and (not self.keepRolledDown) or (rollDown == true)
-    self:SyncKeepState()
-end
-
-local function AutoRollSleevesDelayedCB()
-    if not BetterSleeves.autoRollOnVehiclesTPP then
-        local player = Game.GetPlayer()
-        if not player then return; end
-
-        -- Handle Vehicles TPP
-        local vehicle = player:GetMountedVehicle()
-        if vehicle then
-            local cameraManager = vehicle:GetCameraManager()
-            if cameraManager and cameraManager:IsTPPActive() then
-                return
-            end
-        end
-    end
-
-    BetterSleeves:SyncKeepState()
-end
-
-local function SyncSleevesDelayedCB()
-    local player = Game.GetPlayer()
-    if not player then return; end
-
-    local inventoryPuppet = BetterSleeves:GetInventoryPuppet()
-    if not inventoryPuppet then return; end
-
-    local slots = BetterSleeves:GetActiveSlots()
+---@param keepState SleevesState
+function BetterSleeves:ChangeStateForPuppet(slots, puppet, keepState)
+    slots = slots or self:GetSlotNamesToRoll(true)
     for _, slotName in next, slots do
-        BetterSleeves:SyncPuppetsPOV(player, inventoryPuppet, slotName)
+        self:ChangeStateForSlot(puppet, slotName, keepState)
     end
+end
+
+---@param slots string[]|nil
+---@param puppets gamePuppet[]
+---@param keepState SleevesState
+function BetterSleeves:ChangeStateForPuppets(slots, puppets, keepState)
+    slots = slots or self:GetSlotNamesToRoll(true)
+    for _, puppet in next, puppets do
+        for _, slotName in next, slots do
+            self:ChangeStateForSlot(puppet, slotName, keepState)
+        end
+    end
+end
+
+---@param context table|nil
+---@param slots string[]|nil
+---@param puppets gamePuppet[]
+---@param pov "fpp"|"tpp"
+function BetterSleeves:UpdateSleevesFor(context, slots, puppets, pov)
+    context = context or self:CreateRuleFetchingContext()
+    slots   = slots   or self:GetSlotNamesToRoll(true)
+
+    for _, puppet in next, puppets do
+        context:SetSlot(nil)
+        context:SetPuppet(puppet)
+        for _, slotName in next, slots do
+            context:ApplySleevesRuleForSlot(slotName, pov)
+        end
+    end
+end
+
+function BetterSleeves:UpdateSleeves()
+    local context = self:CreateRuleFetchingContext()
+    local slots = self:GetSlotNamesToRoll(true)
+
+    self:UpdateSleevesFor(context, slots, self:GetPuppetsFPP(), "fpp")
+    self:UpdateSleevesFor(context, slots, self:GetPuppetsTPP(), "tpp")
+end
+
+---@param force boolean
+---@param keepState SleevesState|nil If nil, sleeves are toggled.
+function BetterSleeves:ToggleSleeves(force, keepState)
+    self.forceKeepState = (force == true)
+    if keepState == nil then
+        self.keepState = (self.keepState ~= SleevesState.RolledDown
+                and SleevesState.RolledDown
+                or  SleevesState.RolledUp)
+    else
+        self.keepState = keepState
+    end
+    self:UpdateSleeves()
 end
 
 ---Creates a new "Delayed Roll Down Sleeves Event(tm)" if the current delay is less than the new one.
 ---@param delay number Seconds to wait before auto-rolling down sleeves.
 ---@return boolean ok Whether or not an Auto-Roll could be performed.
 function BetterSleeves:DoAutoRollSleevesDelayed(delay)
-    if self.autoRoll then
-        self.scheduler:SetTask("auto-roll", AutoRollSleevesDelayedCB, delay)
-        return true
-    end
-    return false
+    if not self.autoRoll then return false; end
+    self.scheduler:SetTask("auto-roll", function()
+        if not self.autoRollOnVehiclesTPP then
+            local player = Game.GetPlayer()
+            if not player then return; end
+
+            -- Handle Vehicles TPP
+            local vehicle = player:GetMountedVehicle()
+            if vehicle then
+                local cameraManager = vehicle:GetCameraManager()
+                if cameraManager and cameraManager:IsTPPActive() then
+                    return
+                end
+            end
+        end
+
+        self:UpdateSleeves()
+    end, delay)
+    return true
 end
 
----Creates a new "Sync Sleeves Event(r)" if the current delay is less than the new one.
+---Creates a new "Sync Inventory Sleeves Event(r)" if the current delay is less than the new one.
 ---@param delay number Seconds to wait before syncing sleeves.
 ---@return boolean ok Whether or not a sync could be performed.
-function BetterSleeves:DoSyncSleevesDelayed(delay)
-    local isAutoRolling = BetterSleeves.scheduler:HasTask("auto-roll")
-    if self.syncInventoryPuppet and not isAutoRolling then
-        self.scheduler:SetTask("sync-sleeves", SyncSleevesDelayedCB, delay)
-        return true
-    end
-    return false
+function BetterSleeves:DoSyncInventorySleevesDelayed(delay)
+    if not self.syncInventoryPuppet then return false; end
+    self.scheduler:SetTask("sync-inventory-sleeves", function()
+        local isAutoRolling = self.scheduler:HasTask("auto-roll")
+        if isAutoRolling then return; end
+
+        local inventoryPuppet = self:GetInventoryPuppet()
+        if not inventoryPuppet then return; end
+        self:UpdateSleevesFor(nil, nil, {inventoryPuppet}, "tpp")
+    end, delay)
+    return true
 end
 
-local function Event_SyncSleeves()
-    BetterSleeves:DoSyncSleevesDelayed(BetterSleeves.syncInventoryPuppetDelay)
-end
-
-local function Event_UpdateSleeves()
+local function Event_AutoRollSleeves()
     BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.autoRollDelay)
-    Event_SyncSleeves()
+    BetterSleeves:DoSyncInventorySleevesDelayed(BetterSleeves.syncInventoryPuppetDelay)
+end
+
+local function Event_SyncInventorySleeves()
+    BetterSleeves:DoSyncInventorySleevesDelayed(BetterSleeves.syncInventoryPuppetDelay)
 end
 
 local function Event_DoorControllerPS_OnActionDemolition()
@@ -750,20 +833,19 @@ local function Event_DoorControllerPS_OnActionDemolition()
     local player = Game.GetPlayer()
     if not player then return; end
 
-    local eqSys = Game.GetScriptableSystemsContainer():Get("EquipmentSystem")
-    local armsCybId = eqSys:GetActiveItem(player, gamedataEquipmentArea.ArmsCW)
-    if not armsCybId then return; end
+    local equipmentSystem = Game.GetScriptableSystemsContainer():Get("EquipmentSystem")
+    local armsCyberwareId = equipmentSystem:GetActiveItem(player, gamedataEquipmentArea.ArmsCW)
+    if not armsCyberwareId then return; end
 
-    local armsCybName = TweakDB:GetRecord(armsCybId.id):FriendlyName()
-    if armsCybName ~= BetterSleeves.gorillaArmsWeaponName then return; end
+    local armsCyberwareName = TweakDB:GetRecord(armsCyberwareId.id):FriendlyName()
+    if armsCyberwareName ~= BetterSleeves.gorillaArmsWeaponName then return; end
 
-    BetterSleeves:RollUpSleeves(false, { player })
+    BetterSleeves:ChangeStateForPuppet(nil, player, SleevesState.RolledUp)
     BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.gorillaArmsRollDownDelay)
 end
 
 local function Event_VehicleComponent_OnVehicleCameraChange()
     BetterSleeves:DoAutoRollSleevesDelayed(BetterSleeves.autoRollVehiclesDelay)
-    Event_SyncSleeves()
 end
 
 local function Event_OnInit()
@@ -782,23 +864,21 @@ local function Event_OnInit()
 
     -- EquipmentEx listeners
     if EquipmentEx then
-        -- ObserveAfter("EquipmentEx.OutfitSystem", "EquipItem;ItemIDTweakDBID", Event_UpdateSleeves)
+        -- ObserveAfter("EquipmentEx.OutfitSystem", "EquipItem;ItemIDTweakDBID", Event_AutoRollSleeves)
         -- This is also called within EquipItem(): https://github.com/psiberx/cp2077-equipment-ex/blob/9c3990e758b663dd6dee752fc077f41eada431ce/scripts/OutfitSystem.reds#L617
-        ObserveAfter("EquipmentEx.OutfitSystem", "UnequipItem;ItemID", Event_UpdateSleeves)
+        ObserveAfter("EquipmentEx.OutfitSystem", "UnequipItem;ItemID", Event_AutoRollSleeves)
     end
 
     -- Game listeners
-    Observe("PlayerPuppet", "OnWeaponEquipEvent", Event_UpdateSleeves)
-    -- This also triggers when switching from TPP to FPP on vehicles (and vice-versa).
-    -- I don't know if it was also triggered in other contexts which made the mod work.
-    -- NOTE: This was previously triggered by EquipmentEx
-    -- Observe("PlayerPuppet", "OnItemAddedToSlot", Event_UpdateSleeves)
-    Observe("PlayerPuppet", "OnItemEquipped", Event_UpdateSleeves)
-    Observe("PlayerPuppet", "OnItemUnequipped", Event_UpdateSleeves)
-    Observe("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_UpdateSleeves)
-    Observe("JournalManager", "OnQuestEntryTracked", Event_UpdateSleeves)
-    Observe("JournalManager", "OnQuestEntryUntracked", Event_UpdateSleeves)
-    Observe("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_UpdateSleeves)
+    Observe("PlayerPuppet", "OnWeaponEquipEvent", Event_AutoRollSleeves)
+    Observe("PlayerPuppet", "OnItemEquipped", Event_AutoRollSleeves)
+    Observe("PlayerPuppet", "OnItemUnequipped", Event_AutoRollSleeves)
+    Observe("PlayerPuppet", "OnMakePlayerVisibleAfterSpawn", Event_AutoRollSleeves)
+    Observe("JournalManager", "OnQuestEntryTracked", Event_AutoRollSleeves)
+    Observe("JournalManager", "OnQuestEntryUntracked", Event_AutoRollSleeves)
+    Observe("InventoryDataManagerV2", "EquipItem", Event_AutoRollSleeves)
+    Observe("InventoryDataManagerV2", "UnequipItem", Event_AutoRollSleeves)
+    Observe("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_AutoRollSleeves)
 
     Observe("DoorControllerPS", "OnActionDemolition", Event_DoorControllerPS_OnActionDemolition)
 
@@ -806,9 +886,9 @@ local function Event_OnInit()
 
     -- On menu open is only needed for the first time the menu is opened.
     -- Event_UpdateSleeves will sync the inventory before the menu is even opened which makes inventory loading faster.
-    Observe("gameuiInventoryGameController", "OnInitialize", Event_SyncSleeves)
-    Observe("gameuiInventoryGameController", "RefreshedEquippedItemData", Event_SyncSleeves)
-    -- Observe("gameuiInventoryGameController", "RefreshEquippedWardrobeItems", Event_SyncSleeves)
+    Observe("gameuiInventoryGameController", "OnInitialize", Event_SyncInventorySleeves)
+    Observe("gameuiInventoryGameController", "RefreshedEquippedItemData", Event_SyncInventorySleeves)
+    -- Observe("gameuiInventoryGameController", "RefreshEquippedWardrobeItems", Event_SyncInventorySleeves)
 
     -- Thanks psiberx! https://github.com/psiberx/cp2077-codeware/blob/main/scripts/Player/PlayerSystem.reds
     -- It's the same as what Codeware does.
@@ -837,56 +917,62 @@ local function Event_OnShutdown()
 end
 
 local function Event_OnDraw()
-    if not BetterSleeves.showUI then return; end
+    local mod = BetterSleeves
+
+    if not mod.showUI then return; end
     if ImGui.Begin("Better Sleeves") then
         ImGui.Text("Sleeves |")
         ImGui.SameLine()
 
-        if BetterUI.FitButtonN(2, "Roll Down") then BetterSleeves:ToggleSleeves(false, true); end
+        if BetterUI.FitButtonN(2, "Roll Down") then
+            mod:ToggleSleeves(mod.forceKeepState, SleevesState.RolledDown)
+        end
         ImGui.SameLine()
 
-        if BetterUI.FitButtonN(1, "Roll Up") then BetterSleeves:ToggleSleeves(false, false); end
+        if BetterUI.FitButtonN(1, "Roll Up") then
+            mod:ToggleSleeves(mod.forceKeepState, SleevesState.RolledUp)
+        end
         ImGui.Separator()
 
-        BetterSleeves.autoRoll = ImGui.Checkbox("Auto-Roll", BetterSleeves.autoRoll)
-        if BetterSleeves.autoRoll then
-            BetterSleeves.autoRollDelay = BetterUI.DragFloat("Roll Delay*", BetterSleeves.autoRollDelay, 0.01, 0.01, 5, "%.2f")
+        mod.autoRoll = ImGui.Checkbox("Auto-Roll", mod.autoRoll)
+        if mod.autoRoll then
+            mod.autoRollDelay = BetterUI.DragFloat("Roll Delay*", mod.autoRollDelay, 0.01, 0.01, 5, "%.2f")
             if ImGui.IsItemHovered() then
                 ImGui.SetTooltip("*If too low, may stop sleeves from rolling down when changing clothes.")
             end
 
             ImGui.PushID("keep-state")
             if ImGui.Button("Toggle") then
-                BetterSleeves:ToggleSleeves(BetterSleeves.forceKeepRolledDown)
+                mod:ToggleSleeves(mod.forceKeepState)
             end
             ImGui.SameLine()
-            BetterSleeves.forceKeepRolledDown = ImGui.Checkbox("", BetterSleeves.forceKeepRolledDown)
+            mod.forceKeepState = ImGui.Checkbox("", mod.forceKeepState)
             ImGui.SameLine()
             ImGui.TextWrapped(table.concat{
                 "Keep ",
-                BetterSleeves.forceKeepRolledDown and "Forcefully* " or "",
-                BetterSleeves.keepRolledDown and "Rolled Down" or "Rolled Up",
+                mod.forceKeepState and "Forcefully* " or "",
+                Enum.ToHumanCase(SleevesState[mod.keepState]),
             })
-            if BetterSleeves.forceKeepRolledDown and ImGui.IsItemHovered() then
-                ImGui.SetTooltip("*Ignores any user blacklist.")
+            if mod.forceKeepState and ImGui.IsItemHovered() then
+                ImGui.SetTooltip("*Ignores rules.")
             end
             ImGui.PopID()
             ImGui.Separator()
 
-            BetterSleeves.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", BetterSleeves.autoRollOnVehiclesTPP)
+            mod.autoRollOnVehiclesTPP = ImGui.Checkbox("Allow on Vehicles TPP*", mod.autoRollOnVehiclesTPP)
             if ImGui.IsItemHovered() then
                 ImGui.SetTooltip("*Can cause parts of clothes to disappear in TPP if sleeves are auto-rolled up.");
             end
-            BetterSleeves.autoRollVehiclesDelay = BetterUI.DragFloat("Vehicles Roll Delay*", BetterSleeves.autoRollVehiclesDelay, 0.01, 0.01, 5, "%.2f")
+            mod.autoRollVehiclesDelay = BetterUI.DragFloat("Vehicles Roll Delay*", mod.autoRollVehiclesDelay, 0.01, 0.01, 5, "%.2f")
             if ImGui.IsItemHovered() then
-                ImGui.SetTooltip("*If too low, may stop sleeves from rolling down on TPP to FPP camera transitions.")
+                ImGui.SetTooltip("*If too low, may stop sleeves from updating on TPP to FPP camera transitions.")
             end
             ImGui.Separator()
 
             ImGui.PushID("auto-roll_gorilla-arms")
-            BetterSleeves.gorillaArmsRollUpOnDoorOpen = ImGui.Checkbox("Roll Up on Gorilla Arms Door Open", BetterSleeves.gorillaArmsRollUpOnDoorOpen)
-            if BetterSleeves.gorillaArmsRollUpOnDoorOpen then
-                BetterSleeves.gorillaArmsRollDownDelay = BetterUI.DragFloat("Roll Down Delay", BetterSleeves.gorillaArmsRollDownDelay, 0.01, 1, 5, "%.2f")
+            mod.gorillaArmsRollUpOnDoorOpen = ImGui.Checkbox("Roll Up on Gorilla Arms Door Open", mod.gorillaArmsRollUpOnDoorOpen)
+            if mod.gorillaArmsRollUpOnDoorOpen then
+                mod.gorillaArmsRollDownDelay = BetterUI.DragFloat("Re-Roll Delay", mod.gorillaArmsRollDownDelay, 0.01, 1, 5, "%.2f")
             end
             ImGui.PopID()
         end
@@ -895,28 +981,30 @@ local function Event_OnDraw()
 
         do
             ImGui.PushID("inventory_photo-mode")
-            BetterSleeves.syncInventoryPuppet = ImGui.Checkbox("Sync Inventory Character", BetterSleeves.syncInventoryPuppet)
+            mod.syncInventoryPuppet = ImGui.Checkbox("Sync Inventory Character", mod.syncInventoryPuppet)
 
-            if BetterSleeves.syncInventoryPuppet then
-                BetterSleeves.syncInventoryPuppetDelay = BetterUI.DragFloat("Sync Delay*", BetterSleeves.syncInventoryPuppetDelay, 0.01, 0.01, 5, "%.2f")
+            if mod.syncInventoryPuppet then
+                mod.syncInventoryPuppetDelay = BetterUI.DragFloat("Sync Delay*", mod.syncInventoryPuppetDelay, 0.01, 0.01, 5, "%.2f")
                 if ImGui.IsItemHovered() then
                     ImGui.SetTooltip("*If too low, may stop sleeves from syncing when swapping clothes.");
                 end
                 if BetterUI.FitButtonN(1, "Perform Inventory Sync") then
-                    BetterSleeves:DoSyncSleevesDelayed(0)
+                    mod:DoSyncInventorySleevesDelayed(0)
                 end
             end
 
             ImGui.Separator()
             local photoModeSystem = Game.GetPhotoModeSystem()
-            local photoPuppet = BetterSleeves:GetPhotoPuppet()
+            local photoPuppet = mod:GetPhotoPuppet()
 
             if photoModeSystem:IsPhotoModeActive() and photoPuppet then
                 ImGui.TextWrapped("Photo Mode Sleeves |")
                 ImGui.SameLine()
-                if BetterUI.FitButtonN(2, "Roll Down") then BetterSleeves:RollDownSleeves(true, {photoPuppet}); end
+                if BetterUI.FitButtonN(3, "Sync") then mod:UpdateSleevesFor(nil, nil, {photoPuppet}, "tpp"); end
                 ImGui.SameLine()
-                if BetterUI.FitButtonN(1, "Roll Up") then BetterSleeves:RollUpSleeves(nil, {photoPuppet}); end
+                if BetterUI.FitButtonN(2, "Roll Down") then mod:ChangeStateForPuppet(nil, photoPuppet, SleevesState.RolledDown); end
+                ImGui.SameLine()
+                if BetterUI.FitButtonN(1, "Roll Up") then mod:ChangeStateForPuppet(nil, photoPuppet, SleevesState.RolledUp); end
             else
                 ImGui.TextWrapped("Photo Mode Sleeves | Currently not in Photo Mode.")
             end
@@ -944,66 +1032,147 @@ local function Event_OnDraw()
             })
         end
 
-        if ImGui.CollapsingHeader("Item Blacklist") then
-            ImGui.PushID("item-blacklist")
-            if BetterUI.ButtonAdd() then
-                BetterSleeves.rollDownItemBlacklist[BetterSleeves._newItem] = true
-                BetterSleeves._newItem = ""
-            end
-            ImGui.SameLine()
-            BetterSleeves._newItem = ImGui.InputText("", BetterSleeves._newItem, 256)
-
-            for item in next, BetterSleeves.rollDownItemBlacklist do
-                ImGui.PushID(table.concat{ "item-blacklist_", item })
-                if BetterUI.ButtonRemove() then
-                    BetterSleeves.rollDownItemBlacklist[item] = nil
-                end
+        ---@param rule SleevesRule
+        local function ImSleevesRule(rule)
+            ImGui.PushID("fpp")
+                ImGui.Text("FPP")
                 ImGui.SameLine()
-                ImGui.Text(item)
-                ImGui.PopID()
-            end
+                rule.fpp = Enum.ImCombo(SleevesState, rule.fpp, "")
+            ImGui.PopID()
+            ImGui.SameLine()
+            ImGui.PushID("tpp")
+                ImGui.Text("TPP")
+                ImGui.SameLine()
+                rule.tpp = Enum.ImCombo(SleevesState, rule.tpp, "")
             ImGui.PopID()
         end
 
-        if ImGui.CollapsingHeader("Weapon Blacklist") then
-            ImGui.PushID("weapon-blacklist")
-            if BetterUI.ButtonAdd() then
-                BetterSleeves.rollDownWeaponBlacklist[BetterSleeves._newWeapon] = true
-                BetterSleeves._newWeapon = ""
-            end
-            ImGui.SameLine()
-            BetterSleeves._newWeapon = ImGui.InputText("", BetterSleeves._newWeapon, 256)
-
-            for weapon in next, BetterSleeves.rollDownWeaponBlacklist do
-                ImGui.PushID(table.concat{ "weapon-blacklist_", weapon })
+        ---@param rules table<string, SleevesRule>
+        ---@param ruleId string
+        ---@param scope string
+        ---@param label string
+        local function ImSleevesRulesEntry(rules, ruleId, scope, label)
+            ImGui.PushID(table.concat{ scope, "_", ruleId })
+            local rule = rules[ruleId]
+            if not rule then
+                if BetterUI.ButtonAdd() then
+                    rules[ruleId] = { fpp = SleevesState.RolledUp, tpp = SleevesState.RolledDown }
+                end
+            else
                 if BetterUI.ButtonRemove() then
-                    BetterSleeves.rollDownWeaponBlacklist[weapon] = nil
+                    rules[ruleId] = nil
                 end
                 ImGui.SameLine()
-                ImGui.Text(weapon)
-                ImGui.PopID()
+                ImSleevesRule(rule)
             end
+            ImGui.SameLine()
+            ImGui.Text(label .. ruleId)
             ImGui.PopID()
         end
 
-        if ImGui.CollapsingHeader("Mission Blacklist") then
-            ImGui.PushID("mission-blacklist")
-            if BetterUI.ButtonAdd() then
-                BetterSleeves.rollDownMissionBlacklist[BetterSleeves._newMission] = true
-                BetterSleeves._newMission = ""
-            end
-            ImGui.SameLine()
-            BetterSleeves._newMission = ImGui.InputText("", BetterSleeves._newMission, 512)
+        local function ImSleevesRulesBegin()
+            ImGui.PushID("sleeves-rules")
+            return true
+        end
 
-            for mission in next, BetterSleeves.rollDownMissionBlacklist do
-                ImGui.PushID(table.concat{ "mission-blacklist_", mission })
-                if BetterUI.ButtonRemove() then
-                    BetterSleeves.rollDownMissionBlacklist[mission] = nil
+        local function ImSleevesRulesEnd()
+            ImGui.PopID()
+        end
+
+        if ImGui.CollapsingHeader("Edit Rules") then
+            ImGui.PushID("edit-rules")
+            ImGui.TextWrapped(table.concat{
+                "Rules change the default behaviour of the mod for a specific",
+                " mission, item and/or weapon depending on if you're looking at",
+                " your character in FPP or TPP. Keep sleeves rolled up for items",
+                " which have collars that clip in FPP or keep them rolled down",
+                " for the ones which disappear in TPP, you can customize YOUR",
+                " experience from this menu."
+            })
+            ImGui.TextWrapped("Rules are applied in the following order: Global State > Mission (Quest) > Mission (Objective) > Item > Weapon")
+            ImGui.TextWrapped("You can choose between \"Current\", \"Rolled Down\" or \"Rolled Up\":")
+            ImGui.Bullet(); ImGui.SameLine()
+                ImGui.TextWrapped("\"Current\" does not modify the behaviour of previously applied rules.")
+            ImGui.Bullet(); ImGui.SameLine()
+                ImGui.TextWrapped("\"Rolled Down\" vanilla behaviour for TPP, sleeves are rolled down.")
+            ImGui.Bullet(); ImGui.SameLine()
+                ImGui.TextWrapped("\"Rolled Up\" vanilla behaviour for FPP, sleeves are rolled up.")
+            ImGui.Separator()
+
+            if ImSleevesRulesBegin() then
+                local questId, objectiveId = mod:GetTrackedQuestAndObjectiveIds()
+                if questId then
+                    local entireQuest = questId .. ".*"
+                    ImSleevesRulesEntry(mod.missionRules, entireQuest, "mission", "Quest: ")
+                    if objectiveId then
+                        local specificObjective = table.concat{questId, ".", objectiveId}
+                        ImSleevesRulesEntry(mod.missionRules, specificObjective, "mission", "Objective: ")
+                    end
                 end
-                ImGui.SameLine()
-                ImGui.Text(mission)
-                ImGui.PopID()
+
+                local player = Game.GetPlayer()
+                if player then
+                    for slotName in next, mod.slotsToRoll do
+                        local item = mod:GetItem(player, slotName)
+                        if item then
+                            local itemName = mod:GetItemAppearanceName(player, item):match("[^&]+")
+                            ImSleevesRulesEntry(mod.itemRules, itemName, "slot", slotName:match("%.(.+)") .. " Item: ")
+                        end
+                    end
+
+                    local weaponNames = mod:GetActiveWeaponsName(player)
+                    for i, weaponName in ipairs(weaponNames) do
+                        ImSleevesRulesEntry(mod.weaponRules, weaponName, "weapon", "Weapon" .. tostring(i) .. " Name: ")
+                    end
+                end
+
+                ImGui.Separator()
+                if BetterUI.FitButtonN(1, "Update Sleeves") then
+                    mod:UpdateSleeves()
+                end
+
+                ImSleevesRulesEnd()
             end
+
+            if ImGui.CollapsingHeader("Mission") then
+                if ImSleevesRulesBegin() then
+                    for missionName, rule in next, mod.missionRules do
+                        ImSleevesRulesEntry(mod.missionRules, missionName, "mission", "")
+                    end
+                    ImGui.Separator()
+                    if BetterUI.FitButtonN(1, "Update Sleeves") then
+                        mod:UpdateSleeves()
+                    end
+                    ImSleevesRulesEnd()
+                end
+            end
+
+            if ImGui.CollapsingHeader("Item") then
+                if ImSleevesRulesBegin() then
+                    for itemName, rule in next, mod.itemRules do
+                        ImSleevesRulesEntry(mod.itemRules, itemName, "item", "")
+                    end
+                    ImGui.Separator()
+                    if BetterUI.FitButtonN(1, "Update Sleeves") then
+                        mod:UpdateSleeves()
+                    end
+                    ImSleevesRulesEnd()
+                end
+            end
+
+            if ImGui.CollapsingHeader("Weapon") then
+                if ImSleevesRulesBegin() then
+                    for weaponName, rule in next, mod.weaponRules do
+                        ImSleevesRulesEntry(mod.weaponRules, weaponName, "weapon", "")
+                    end
+                    ImGui.Separator()
+                    if BetterUI.FitButtonN(1, "Update Sleeves") then
+                        mod:UpdateSleeves()
+                    end
+                    ImSleevesRulesEnd()
+                end
+            end
+
             ImGui.PopID()
         end
 
@@ -1021,10 +1190,10 @@ local function Event_OnDraw()
             })
 
             if BetterUI.FitButtonN(1, "Detect EquipmentEx") then
-                if BetterSleeves:DetectEquipmentExAndEnableSlots() then
-                    BetterSleeves.Log("'Detect EquipmentEx' button has found EquipmentEx.")
+                if mod:DetectEquipmentExAndEnableSlots() then
+                    mod.Log("'Detect EquipmentEx' button has found EquipmentEx.")
                 else
-                    BetterSleeves.Log("'Detect EquipmentEx' button did not find EquipmentEx installed.")
+                    mod.Log("'Detect EquipmentEx' button did not find EquipmentEx installed.")
                 end
             end
             ImGui.Separator()
@@ -1035,150 +1204,58 @@ local function Event_OnDraw()
             })
 
             if BetterUI.FitButtonN(1, "Roll Up ALL Slots") then
-                BetterSleeves:RollUpSleeves(true)
+                mod:ChangeStateForPuppets(mod:GetAllSlots(), mod:GetPuppets(), SleevesState.RolledUp)
             end
             ImGui.Separator()
 
             ImGui.PushID("user-slots")
             if BetterUI.ButtonAdd() then
-                if not BetterSleeves.slotsToRoll[BetterSleeves._newSlot] then
-                    BetterSleeves.slotsToRoll[BetterSleeves._newSlot] = {
-                        type = BetterSleeves.SlotType.USER_DEFINED,
+                if not mod.slotsToRoll[mod._newSlot] then
+                    mod.slotsToRoll[mod._newSlot] = {
+                        type = mod.SlotType.USER_DEFINED,
                         enabled = true
                     }
-                    BetterSleeves._newSlot = ""
+                    mod._newSlot = ""
                 end
             end
             ImGui.SameLine()
-            BetterSleeves._newSlot = ImGui.InputText("", BetterSleeves._newSlot, 512)
+            mod._newSlot = ImGui.InputText("", mod._newSlot, 512)
 
-            for slotName, slot in next, BetterSleeves.slotsToRoll do
-                if slot.type == BetterSleeves.SlotType.USER_DEFINED then
+            for slotName, slot in next, mod.slotsToRoll do
+                if slot.type == mod.SlotType.USER_DEFINED then
                     ImGui.PushID(table.concat{ "user-slots_", slotName })
                     if BetterUI.ButtonRemove() then
-                        BetterSleeves.slotsToRoll[slotName] = nil
+                        mod.slotsToRoll[slotName] = nil
                     end
                     ImGui.SameLine()
-                    BetterSleeves.slotsToRoll[slotName].enabled = ImGui.Checkbox("", BetterSleeves.slotsToRoll[slotName].enabled)
+                    mod.slotsToRoll[slotName].enabled = ImGui.Checkbox("", mod.slotsToRoll[slotName].enabled)
                     ImGui.SameLine()
                     ImGui.Text(slotName)
                     ImGui.PopID()
                 end
             end
 
-            for slotName, slot in next, BetterSleeves.slotsToRoll do
-                if slot.type ~= BetterSleeves.SlotType.USER_DEFINED then
+            for slotName, slot in next, mod.slotsToRoll do
+                if slot.type ~= mod.SlotType.USER_DEFINED then
                     ImGui.PushID(table.concat{ "modded-slots_", slotName })
-                    local newEnabled, changed = ImGui.Checkbox("", BetterSleeves.slotsToRoll[slotName].enabled)
+                    local newEnabled, changed = ImGui.Checkbox("", mod.slotsToRoll[slotName].enabled)
                     if changed then
-                        BetterSleeves.slotsToRoll[slotName].userHandled = true
-                        BetterSleeves.slotsToRoll[slotName].enabled = newEnabled
+                        mod.slotsToRoll[slotName].userHandled = true
+                        mod.slotsToRoll[slotName].enabled = newEnabled
                     end
                     ImGui.PopID()
                     ImGui.SameLine()
                 end
 
-                if slot.type == BetterSleeves.SlotType.VANILLA then
+                if slot.type == mod.SlotType.VANILLA then
                     ImGui.Text("[Vanilla] " .. slotName)
-                elseif slot.type == BetterSleeves.SlotType.EQUIPMENT_EX then
+                elseif slot.type == mod.SlotType.EQUIPMENT_EX then
                     ImGui.Text("[EquipmentEx] " .. slotName)
-                elseif slot.type ~= BetterSleeves.SlotType.USER_DEFINED then
+                elseif slot.type ~= mod.SlotType.USER_DEFINED then
                     ImGui.Text("[Other Mods] " .. slotName)
                 end
             end
             ImGui.PopID()
-        end
-
-        if ImGui.CollapsingHeader("Quick Blacklist") then
-            ImGui.TextWrapped(table.concat{
-                "Within this section you can quickly blacklist equipped items, active weapons and quests.",
-                " Use the button below to test a change made in the blacklist."
-            })
-
-            if BetterUI.FitButtonN(1, "Sync Sleeves") then
-                BetterSleeves:SyncKeepState()
-            end
-
-            local player = Game.GetPlayer()
-            for slot in next, BetterSleeves.slotsToRoll do
-                local item = BetterSleeves:GetItem(player, slot)
-                if item then
-                    local itemName = BetterSleeves:GetItemAppearanceName(player, item):match("[^&]+")
-                    ImGui.PushID(table.concat{ "slot-qb_", slot })
-                    if BetterUI.ButtonAdd() then
-                        BetterSleeves.rollDownItemBlacklist[itemName] = true
-                    end
-                    ImGui.SameLine()
-                    if BetterSleeves.rollDownItemBlacklist[itemName] then
-                        if BetterUI.ButtonRemove() then
-                            BetterSleeves.rollDownItemBlacklist[itemName] = nil
-                        end
-                    else
-                        BetterUI.SquareButton("/")
-                    end
-                    ImGui.SameLine()
-                    ImGui.Text(table.concat { slot:match("%.(.+)"), " Item: ", itemName })
-                    ImGui.PopID()
-                end
-            end
-
-            if player then
-                local weaponNames = BetterSleeves:GetActiveWeaponsName(player)
-                for i, weaponName in ipairs(weaponNames) do
-                    ImGui.PushID("weapon-qb-" .. tostring(i))
-                    if BetterUI.ButtonAdd() then
-                        BetterSleeves.rollDownWeaponBlacklist[weaponName] = true
-                    end
-                    ImGui.SameLine()
-                    if BetterSleeves.rollDownWeaponBlacklist[weaponName] then
-                        if BetterUI.ButtonRemove() then
-                            BetterSleeves.rollDownWeaponBlacklist[weaponName] = nil
-                        end
-                    else
-                        BetterUI.SquareButton("/")
-                    end
-                    ImGui.SameLine()
-                    ImGui.Text("Weapon" .. tostring(i) .. " Name: " .. weaponName)
-                    ImGui.PopID()
-                end
-            end
-
-            local quest, obj = BetterSleeves:GetTrackedMissionAndObjectiveIds()
-            if quest then
-                ImGui.PushID("quest-qb")
-                local blacklistQuestAll = table.concat{quest, ".*"}
-                if BetterUI.ButtonAdd() then
-                    BetterSleeves.rollDownMissionBlacklist[blacklistQuestAll] = true
-                end
-                ImGui.SameLine()
-                if BetterSleeves.rollDownMissionBlacklist[blacklistQuestAll] then
-                    if BetterUI.ButtonRemove() then
-                        BetterSleeves.rollDownMissionBlacklist[blacklistQuestAll] = nil
-                    end
-                else
-                    BetterUI.SquareButton("/")
-                end
-                ImGui.SameLine()
-                ImGui.Text("Quest ID: " .. quest)
-                ImGui.PopID()
-
-                ImGui.PushID("objective-qb")
-                local blacklistQuestSpecific = table.concat{quest, ".", obj}
-                if BetterUI.ButtonAdd() then
-                    BetterSleeves.rollDownMissionBlacklist[blacklistQuestSpecific] = true
-                end
-                ImGui.SameLine()
-                if BetterSleeves.rollDownMissionBlacklist[blacklistQuestSpecific] then
-                    if BetterUI.ButtonRemove() then
-                        BetterSleeves.rollDownMissionBlacklist[blacklistQuestSpecific] = nil
-                    end
-                else
-                    BetterUI.SquareButton("/")
-                end
-                ImGui.SameLine()
-                ImGui.Text("Objective ID: " .. obj)
-                ImGui.PopID()
-            end
         end
 
         ImGui.Separator()
@@ -1186,13 +1263,13 @@ local function Event_OnDraw()
         ImGui.Text("Config |")
         ImGui.SameLine()
 
-        if BetterUI.FitButtonN(3, "Load") then BetterSleeves:LoadConfig(); end
+        if BetterUI.FitButtonN(3, "Load") then mod:LoadConfig(); end
         ImGui.SameLine()
 
-        if BetterUI.FitButtonN(2, "Save") then BetterSleeves:SaveConfig(); end
+        if BetterUI.FitButtonN(2, "Save") then mod:SaveConfig(); end
         ImGui.SameLine()
 
-        if BetterUI.FitButtonN(1, "Reset") then BetterSleeves:ResetConfig(); end
+        if BetterUI.FitButtonN(1, "Reset") then mod:ResetConfig(); end
         ImGui.Separator()
     end
 end
@@ -1212,14 +1289,14 @@ function BetterSleeves:Init()
         end
     end
 
-    registerInput("rolldown_sleeves", "Roll Down Sleeves", _InputAsHotkey(function() self:ToggleSleeves(false, true)  end))
-    registerInput("rollup_sleeves",   "Roll Up Sleeves",   _InputAsHotkey(function() self:ToggleSleeves(false, false) end))
-    registerInput("toggle_sleeves",   "Toggle Sleeves",    _InputAsHotkey(function() self:ToggleSleeves(false)        end))
-    registerInput("force_rolldown_sleeves", "Force Roll Down Sleeves", _InputAsHotkey(function() self:ToggleSleeves(true, true)  end))
-    registerInput("force_rollup_sleeves",   "Force Roll Up Sleeves",   _InputAsHotkey(function() self:ToggleSleeves(true, false) end))
-    registerInput("force_toggle_sleeves",   "Force Toggle Sleeves",    _InputAsHotkey(function() self:ToggleSleeves(true)        end))
+    registerInput("rolldown_sleeves", "Roll Down Sleeves", _InputAsHotkey(function() self:ToggleSleeves(false, SleevesState.RolledDown) end))
+    registerInput("rollup_sleeves",   "Roll Up Sleeves",   _InputAsHotkey(function() self:ToggleSleeves(false, SleevesState.RolledUp)   end))
+    registerInput("toggle_sleeves",   "Toggle Sleeves",    _InputAsHotkey(function() self:ToggleSleeves(false) end))
+    registerInput("force_rolldown_sleeves", "Force Roll Down Sleeves", _InputAsHotkey(function() self:ToggleSleeves(true, SleevesState.RolledDown) end))
+    registerInput("force_rollup_sleeves",   "Force Roll Up Sleeves",   _InputAsHotkey(function() self:ToggleSleeves(true, SleevesState.RolledUp)   end))
+    registerInput("force_toggle_sleeves",   "Force Toggle Sleeves",    _InputAsHotkey(function() self:ToggleSleeves(true) end))
 
-    registerInput("sync_sleeves", "Sync Sleeves", _InputAsHotkey(function() self:SyncKeepState() end))
+    registerInput("update_sleeves", "Update Sleeves", _InputAsHotkey(function() self:UpdateSleeves() end))
 
     registerForEvent("onInit",     Event_OnInit)
     registerForEvent("onUpdate",   Event_OnUpdate)
