@@ -510,13 +510,17 @@ end
 ---@param player PlayerPuppet
 ---@return boolean
 function BetterSleeves:IsPlayerPuppetInTPP(player)
-    local vehicle = player:GetMountedVehicle()
-    if vehicle then
-        local cameraManager = vehicle:GetCameraManager()
-        if cameraManager and cameraManager:IsTPPActive() then
-            return true
-        end
+    local takeOverControlSystem = Game.GetScriptableSystemsContainer():Get("TakeOverControlSystem")
+    if takeOverControlSystem:IsDeviceControlled() then
+        return true
     end
+
+    local PlayerStateMachineDefs = GetAllBlackboardDefs().PlayerStateMachine
+    local psmBlackboard = player:GetPlayerStateMachineBlackboard()
+    if psmBlackboard:GetBool(PlayerStateMachineDefs.IsVehicleInTPP) then
+        return true
+    end
+
     return false
 end
 
@@ -900,6 +904,9 @@ local function Event_OnInit()
     Observe("InventoryDataManagerV2", "UnequipItem", Event_AutoRollSleeves)
     Observe("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_AutoRollSleeves)
 
+    Observe("TakeOverControlSystem", "OnRequestTakeControl", Event_AutoRollSleeves)
+    Observe("TakeOverControlSystem", "OnRequestReleaseControl", Event_AutoRollSleeves)
+
     Observe("MenuScenario_CharacterCustomization", "OnLeaveScenario", Event_AutoRollSleeves)
     Observe("MenuScenario_CharacterCustomizationMirror", "OnLeaveScenario", Event_AutoRollSleeves)
     Observe("RipperDocGameController", "OnUninitialize", Event_AutoRollSleeves)
@@ -910,6 +917,8 @@ local function Event_OnInit()
     Observe("VehicleComponent", "OnVehicleCameraChange", Event_OnVehicleCameraChange)
     -- Handle falling from a motorcycle
     Observe("VehicleComponent", "OnUnmountingEvent", Event_OnVehicleCameraChange)
+    Observe("RemoteControlDrivingHUDGameController", "OnRemoteControlledVehicleChanged", Event_OnVehicleCameraChange)
+    Observe("RemoteControlDrivingHUDGameController", "OnPSMRemoteControlledVehicleCameraChangedToTPP", Event_OnVehicleCameraChange)
 
     -- On menu open is only needed for the first time the menu is opened.
     -- Event_UpdateSleeves will sync the inventory before the menu is even opened which makes inventory loading faster.
