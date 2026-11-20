@@ -900,6 +900,11 @@ local function Event_OnInit()
     Observe("InventoryDataManagerV2", "UnequipItem", Event_AutoRollSleeves)
     Observe("gameWardrobeSystem", "SetActiveClothingSetIndex", Event_AutoRollSleeves)
 
+    Observe("MenuScenario_CharacterCustomization", "OnLeaveScenario", Event_AutoRollSleeves)
+    Observe("MenuScenario_CharacterCustomizationMirror", "OnLeaveScenario", Event_AutoRollSleeves)
+    Observe("RipperDocGameController", "OnUninitialize", Event_AutoRollSleeves)
+    Observe("GlamDocGameController", "OnUninitialize", Event_AutoRollSleeves)
+
     Observe("DoorControllerPS", "OnActionDemolition", Event_DoorControllerPS_OnActionDemolition)
 
     Observe("VehicleComponent", "OnVehicleCameraChange", Event_OnVehicleCameraChange)
