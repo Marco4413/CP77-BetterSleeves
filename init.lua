@@ -34,12 +34,26 @@ local SleevesState = Enum.New{
     RolledUp   = 3,
 }
 
+---@enum SlotType
+local SlotType = Enum.New{
+    UserDefined = 0,
+    Vanilla     = 1,
+    EquipmentEx = 2,
+    OtherMods   = 1024,
+}
+
 ---@class SleevesRule
 ---@field fpp SleevesState
 ---@field tpp SleevesState
 
+---@class SlotToRoll
+---@field type SlotType
+---@field enabled boolean
+---@field userHandled boolean
+
 local BetterSleeves = {
     SleevesState = SleevesState,
+    SlotType = SlotType,
 
     autoRoll = true,
     autoRollDelay = 1.0,
@@ -61,12 +75,8 @@ local BetterSleeves = {
     ---@type table<string, SleevesRule>
     weaponRules = {},
 
+    ---@type table<string, SlotToRoll>
     slotsToRoll = {},
-    SlotType = {
-        USER_DEFINED = 0,
-        VANILLA = 1,
-        EQUIPMENT_EX = 2,
-    },
     _newSlot = "",
     slotToAreaType = {},
     _configInitialized = false,
@@ -111,7 +121,7 @@ function BetterSleeves:DetectEquipmentExAndEnableSlots()
     if EquipmentEx then
         -- Equipment-EX Slots
         for _, slot in next, self.slotsToRoll do
-            if slot.type == self.SlotType.EQUIPMENT_EX then
+            if slot.type == SlotType.EquipmentEx then
                 slot.enabled = true
                 slot.userHandled = false
             end
@@ -135,18 +145,18 @@ function BetterSleeves:ResetConfig()
     self.itemRules = {}
     self.weaponRules = {}
     self.slotsToRoll = {
-        ["AttachmentSlots.Outfit"]  = { type = self.SlotType.VANILLA, enabled = true, userHandled = false },
-        ["AttachmentSlots.Torso"]   = { type = self.SlotType.VANILLA, enabled = true, userHandled = false },
-        ["AttachmentSlots.Chest"]   = { type = self.SlotType.VANILLA, enabled = true, userHandled = false },
-        ["OutfitSlots.TorsoOuter"]  = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled, userHandled = false },
-        ["OutfitSlots.TorsoMiddle"] = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled, userHandled = false },
-        ["OutfitSlots.TorsoInner"]  = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled, userHandled = false },
-        ["OutfitSlots.TorsoUnder"]  = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled, userHandled = false },
-        ["OutfitSlots.TorsoAux"]    = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled, userHandled = false },
-        ["OutfitSlots.BodyOuter"]   = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled, userHandled = false },
-        ["OutfitSlots.BodyMiddle"]  = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled, userHandled = false },
-        ["OutfitSlots.BodyInner"]   = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled, userHandled = false },
-        ["OutfitSlots.BodyUnder"]   = { type = self.SlotType.EQUIPMENT_EX, enabled = eqExInstalled, userHandled = false },
+        ["AttachmentSlots.Outfit"]  = { type = SlotType.Vanilla, enabled = true, userHandled = false },
+        ["AttachmentSlots.Torso"]   = { type = SlotType.Vanilla, enabled = true, userHandled = false },
+        ["AttachmentSlots.Chest"]   = { type = SlotType.Vanilla, enabled = true, userHandled = false },
+        ["OutfitSlots.TorsoOuter"]  = { type = SlotType.EquipmentEx, enabled = eqExInstalled, userHandled = false },
+        ["OutfitSlots.TorsoMiddle"] = { type = SlotType.EquipmentEx, enabled = eqExInstalled, userHandled = false },
+        ["OutfitSlots.TorsoInner"]  = { type = SlotType.EquipmentEx, enabled = eqExInstalled, userHandled = false },
+        ["OutfitSlots.TorsoUnder"]  = { type = SlotType.EquipmentEx, enabled = eqExInstalled, userHandled = false },
+        ["OutfitSlots.TorsoAux"]    = { type = SlotType.EquipmentEx, enabled = eqExInstalled, userHandled = false },
+        ["OutfitSlots.BodyOuter"]   = { type = SlotType.EquipmentEx, enabled = eqExInstalled, userHandled = false },
+        ["OutfitSlots.BodyMiddle"]  = { type = SlotType.EquipmentEx, enabled = eqExInstalled, userHandled = false },
+        ["OutfitSlots.BodyInner"]   = { type = SlotType.EquipmentEx, enabled = eqExInstalled, userHandled = false },
+        ["OutfitSlots.BodyUnder"]   = { type = SlotType.EquipmentEx, enabled = eqExInstalled, userHandled = false },
     }
     self.gorillaArmsRollUpOnDoorOpen = true
     self.gorillaArmsRollDownDelay = 3.15
@@ -202,8 +212,12 @@ function BetterSleeves:SaveConfig()
 
     local slotsToSave = { }
     for slotName, slot in next, self.slotsToRoll do
-        if slot.type == self.SlotType.USER_DEFINED or slot.userHandled then
-            slotsToSave[slotName] = slot
+        if slot.type == SlotType.UserDefined or slot.userHandled then
+            slotsToSave[slotName] = {
+                type        = SlotType[slot.type],
+                enabled     = slot.enabled,
+                userHandled = slot.userHandled,
+            }
         end
     end
 
@@ -347,16 +361,22 @@ function BetterSleeves:LoadConfig()
 
         if type(config.slotsToRoll) == "table" then
             for slotName, slot in next, config.slotsToRoll do
+                slot.enabled = slot.enabled and true or false
                 if type(slot) == "number" then
-                    if slot == self.SlotType.USER_DEFINED and not self.slotsToRoll[slotName] then
+                    if not SlotType[slot] then slot = SlotType.OtherMods; end
+                    if slot == SlotType.UserDefined and not self.slotsToRoll[slotName] then
                         self.slotsToRoll[slotName] = { type = slot, enabled = true }
                     end
-                else -- Table
-                    if slot.type == self.SlotType.USER_DEFINED then
+                elseif type(slot) == "table" then
+                    if not SlotType[slot.type]     then slot.type = SlotType.OtherMods;  end
+                    -- slot.type exists in SlotType, convert it to integer
+                    if type(slot.type) == "string" then slot.type = SlotType[slot.type]; end
+
+                    if slot.type == SlotType.UserDefined then
                         self.slotsToRoll[slotName] = slot
                     elseif self.slotsToRoll[slotName] and self.slotsToRoll[slotName].type == slot.type then
+                        slot.userHandled = true
                         self.slotsToRoll[slotName] = slot
-                        self.slotsToRoll[slotName].userHandled = true
                     end
                 end
             end
@@ -1212,7 +1232,7 @@ local function Event_OnDraw()
             if BetterUI.ButtonAdd() then
                 if not mod.slotsToRoll[mod._newSlot] then
                     mod.slotsToRoll[mod._newSlot] = {
-                        type = mod.SlotType.USER_DEFINED,
+                        type = SlotType.UserDefined,
                         enabled = true
                     }
                     mod._newSlot = ""
@@ -1222,7 +1242,7 @@ local function Event_OnDraw()
             mod._newSlot = ImGui.InputText("", mod._newSlot, 512)
 
             for slotName, slot in next, mod.slotsToRoll do
-                if slot.type == mod.SlotType.USER_DEFINED then
+                if slot.type == SlotType.UserDefined then
                     ImGui.PushID(table.concat{ "user-slots_", slotName })
                     if BetterUI.ButtonRemove() then
                         mod.slotsToRoll[slotName] = nil
@@ -1236,7 +1256,7 @@ local function Event_OnDraw()
             end
 
             for slotName, slot in next, mod.slotsToRoll do
-                if slot.type ~= mod.SlotType.USER_DEFINED then
+                if slot.type ~= SlotType.UserDefined then
                     ImGui.PushID(table.concat{ "modded-slots_", slotName })
                     local newEnabled, changed = ImGui.Checkbox("", mod.slotsToRoll[slotName].enabled)
                     if changed then
@@ -1245,14 +1265,7 @@ local function Event_OnDraw()
                     end
                     ImGui.PopID()
                     ImGui.SameLine()
-                end
-
-                if slot.type == mod.SlotType.VANILLA then
-                    ImGui.Text("[Vanilla] " .. slotName)
-                elseif slot.type == mod.SlotType.EQUIPMENT_EX then
-                    ImGui.Text("[EquipmentEx] " .. slotName)
-                elseif slot.type ~= mod.SlotType.USER_DEFINED then
-                    ImGui.Text("[Other Mods] " .. slotName)
+                    ImGui.Text(table.concat{ "[", Enum.ToHumanCase(SlotType[slot.type]), "] ", slotName })
                 end
             end
             ImGui.PopID()
