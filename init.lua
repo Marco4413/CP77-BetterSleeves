@@ -1090,12 +1090,14 @@ local function Event_OnDraw()
             ImGui.PopID()
         end
 
-        local function ImSleevesRulesBegin()
+        local function ImSleevesRulesBegin(scope)
             ImGui.PushID("sleeves-rules")
+            ImGui.PushID(scope or "")
             return true
         end
 
         local function ImSleevesRulesEnd()
+            ImGui.PopID()
             ImGui.PopID()
         end
 
@@ -1119,7 +1121,7 @@ local function Event_OnDraw()
                 ImGui.TextWrapped("\"Rolled Up\" vanilla behaviour for FPP, sleeves are rolled up.")
             ImGui.Separator()
 
-            if ImSleevesRulesBegin() then
+            if ImSleevesRulesBegin("quick") then
                 local questId, objectiveId = mod:GetTrackedQuestAndObjectiveIds()
                 if questId then
                     local entireQuest = questId .. ".*"
@@ -1155,7 +1157,7 @@ local function Event_OnDraw()
             end
 
             if ImGui.CollapsingHeader("Mission") then
-                if ImSleevesRulesBegin() then
+                if ImSleevesRulesBegin("mission") then
                     for missionName, rule in next, mod.missionRules do
                         ImSleevesRulesEntry(mod.missionRules, missionName, "mission", "")
                     end
@@ -1168,7 +1170,7 @@ local function Event_OnDraw()
             end
 
             if ImGui.CollapsingHeader("Item") then
-                if ImSleevesRulesBegin() then
+                if ImSleevesRulesBegin("item") then
                     for itemName, rule in next, mod.itemRules do
                         ImSleevesRulesEntry(mod.itemRules, itemName, "item", "")
                     end
@@ -1181,7 +1183,7 @@ local function Event_OnDraw()
             end
 
             if ImGui.CollapsingHeader("Weapon") then
-                if ImSleevesRulesBegin() then
+                if ImSleevesRulesBegin("weapon") then
                     for weaponName, rule in next, mod.weaponRules do
                         ImSleevesRulesEntry(mod.weaponRules, weaponName, "weapon", "")
                     end
